@@ -8,7 +8,17 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   bundle: true,
-  noExternal: [/(.*)/], // bundle everything except node builtins to resolve alias paths
-  external: ['better-sqlite3', 'express', 'cors', 'zod', 'ws'], // keep native/large deps external
+  // Bundle workspace packages and local path aliases, but keep runtime
+  // dependencies external. Several Express/SQLite dependencies are CommonJS
+  // and break when inlined into an ESM bundle.
+  noExternal: [/^@singulary\//],
+  external: [
+    'better-sqlite3',
+    'cookie-parser',
+    'cors',
+    'express',
+    'ws',
+    'zod'
+  ],
   splitting: false,
 });
