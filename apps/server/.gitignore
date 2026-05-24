@@ -1,0 +1,8 @@
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Application Data & Storage
+data/
+storage/*
+!storage/.gitkeep

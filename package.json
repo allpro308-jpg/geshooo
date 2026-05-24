@@ -1,0 +1,33 @@
+{
+  "name": "singulary",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted AI app builder MVP with a React frontend and Express SQLite backend.",
+  "type": "module",
+  "packageManager": "pnpm@9.15.3",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @singulary/server dev\" \"pnpm --filter @singulary/web dev\"",
+    "build": "pnpm --filter @singulary/shared build && pnpm --filter @singulary/server build && pnpm --filter @singulary/web build",
+    "start": "pnpm --filter @singulary/server start",
+    "admin:create": "pnpm --filter @singulary/server admin:create",
+    "setup:status": "pnpm --filter @singulary/server setup:status",
+    "typecheck": "pnpm --filter @singulary/shared typecheck && pnpm --filter @singulary/server typecheck && pnpm --filter @singulary/web typecheck",
+    "lint": "eslint . --fix",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-simple-import-sort": "^12.1.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "tsup": "^8.0.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

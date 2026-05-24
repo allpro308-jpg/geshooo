@@ -1,0 +1,6 @@
+# Build outputs
+dist/
+build/
+.next/
+.svelte-kit/
+*.tsbuildinfo

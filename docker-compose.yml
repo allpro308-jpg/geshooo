@@ -1,0 +1,19 @@
+services:
+  singulary:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: singulary
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_PATH: /app/storage/singulary.sqlite
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+    volumes:
+      - singulary_storage:/app/storage
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  singulary_storage:
