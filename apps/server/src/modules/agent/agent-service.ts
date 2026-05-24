@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { Agent, type AgentEvent, type ModelConfig } from "@singulary/agent";
+import { Agent, type AgentEvent, type ModelConfig, type ToolGateDecision, type ToolGateRequest } from "@singulary/agent";
 import type { ChatMessage } from "@singulary/inference";
-import type { AgentMessage, AgentStreamEvent, AgentToolCall } from "@singulary/shared";
+import type { AgentMessage, AgentStreamEvent, AgentToolCall, ApprovalRequest } from "@singulary/shared";
 
 import { db, nowIso } from "@/db/database";
+import { getPlatformSettings } from "@/modules/admin/platform-settings";
 import { recordAudit } from "@/modules/audit/audit-service";
 import { resolveInferenceClient } from "@/modules/inference/inference-service";
 import { estimateCostUsd } from "@/modules/inference/model-pricing";
@@ -27,6 +28,7 @@ import { type AgentToolContext,agentTools } from "./agent-tools";
 
 const sessionStreams = new Map<string, Set<(event: AgentStreamEvent) => void>>();
 const activeControllers = new Map<string, AbortController>();
+const pendingApprovalWaits = new Map<string, (status: "approved" | "rejected" | "cancelled") => void>();
 
 export function registerSessionStream(
   sessionId: string,
@@ -62,12 +64,107 @@ export function cancelAgentSession(sessionId: string): void {
     controller.abort();
     activeControllers.delete(sessionId);
   }
+  resolvePendingApprovalsForSession(sessionId, "cancelled", null);
   db.prepare("UPDATE agent_sessions SET status = 'cancelled', updated_at = ? WHERE id = ?").run(
     nowIso(),
     sessionId
   );
   broadcastSessionEvent(sessionId, { type: "error", error: "Generation cancelled by user." });
   broadcastSessionEvent(sessionId, { type: "done" });
+}
+
+type ApprovalRow = {
+  id: string;
+  session_id: string | null;
+  tool_call_id: string | null;
+  action: string;
+  reason: string;
+  risk_level: "high" | "dangerous";
+  affected_project_id: string | null;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  metadata_json: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+function mapApproval(row: ApprovalRow): ApprovalRequest {
+  let metadata: Record<string, unknown> = {};
+  try {
+    metadata = row.metadata_json ? JSON.parse(row.metadata_json) : {};
+  } catch {
+    metadata = {};
+  }
+  return {
+    id: row.id,
+    sessionId: row.session_id ?? "",
+    toolCallId: row.tool_call_id ?? "",
+    action: row.action,
+    reason: row.reason,
+    riskLevel: row.risk_level,
+    affectedProjectId: row.affected_project_id,
+    status: row.status,
+    metadata,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at
+  };
+}
+
+export function listPendingApprovals(sessionId: string): ApprovalRequest[] {
+  const rows = db
+    .prepare("SELECT * FROM approvals WHERE session_id = ? AND status = 'pending' ORDER BY created_at ASC")
+    .all(sessionId) as ApprovalRow[];
+  return rows.map(mapApproval);
+}
+
+export function resolveApproval(
+  approvalId: string,
+  status: "approved" | "rejected",
+  resolvedBy: string
+): ApprovalRequest {
+  const row = db.prepare("SELECT * FROM approvals WHERE id = ?").get(approvalId) as ApprovalRow | undefined;
+  if (!row) throw new Error("Approval request not found.");
+  if (row.status !== "pending") return mapApproval(row);
+
+  const resolvedAt = nowIso();
+  db.prepare("UPDATE approvals SET status = ?, resolved_by = ?, resolved_at = ? WHERE id = ?").run(
+    status,
+    resolvedBy,
+    resolvedAt,
+    approvalId
+  );
+  const updated = db.prepare("SELECT * FROM approvals WHERE id = ?").get(approvalId) as ApprovalRow;
+  recordAudit(`approval.${status}`, resolvedBy, {
+    approvalId,
+    sessionId: row.session_id,
+    toolCallId: row.tool_call_id,
+    action: row.action,
+    riskLevel: row.risk_level
+  });
+  pendingApprovalWaits.get(approvalId)?.(status);
+  pendingApprovalWaits.delete(approvalId);
+  if (row.session_id) {
+    broadcastSessionEvent(row.session_id, { type: "approval_resolved", approvalId, status });
+  }
+  return mapApproval(updated);
+}
+
+function resolvePendingApprovalsForSession(
+  sessionId: string,
+  status: "cancelled",
+  resolvedBy: string | null
+): void {
+  const rows = db
+    .prepare("SELECT * FROM approvals WHERE session_id = ? AND status = 'pending'")
+    .all(sessionId) as ApprovalRow[];
+  if (rows.length === 0) return;
+  const resolvedAt = nowIso();
+  const update = db.prepare("UPDATE approvals SET status = ?, resolved_by = ?, resolved_at = ? WHERE id = ?");
+  for (const row of rows) {
+    update.run(status, resolvedBy, resolvedAt, row.id);
+    pendingApprovalWaits.get(row.id)?.(status);
+    pendingApprovalWaits.delete(row.id);
+    broadcastSessionEvent(sessionId, { type: "approval_resolved", approvalId: row.id, status });
+  }
 }
 
 async function getProjectContext(projectId: string, workspaceId: string): Promise<string> {
@@ -162,6 +259,147 @@ function loadConversation(sessionId: string): ChatMessage[] {
     tool_call_id: row.tool_call_id ?? undefined,
     tool_calls: row.tool_calls_json ? JSON.parse(row.tool_calls_json) : undefined
   }));
+}
+
+async function waitForApprovalDecision(
+  approvalId: string,
+  signal: AbortSignal
+): Promise<"approved" | "rejected" | "cancelled"> {
+  const current = db.prepare("SELECT status FROM approvals WHERE id = ?").get(approvalId) as
+    | { status: "pending" | "approved" | "rejected" | "cancelled" }
+    | undefined;
+  if (!current) return "cancelled";
+  if (current.status === "approved" || current.status === "rejected" || current.status === "cancelled") {
+    return current.status;
+  }
+  if (signal.aborted) return "cancelled";
+
+  return await new Promise((resolve) => {
+    const onAbort = () => {
+      pendingApprovalWaits.delete(approvalId);
+      resolve("cancelled");
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    pendingApprovalWaits.set(approvalId, (status) => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(status);
+    });
+  });
+}
+
+async function requestToolApproval(
+  request: ToolGateRequest<AgentToolContext>,
+  sessionId: string,
+  userId: string,
+  projectId: string,
+  signal: AbortSignal
+): Promise<ToolGateDecision | void> {
+  if (request.risk !== "high" && request.risk !== "dangerous") return;
+  const settings = getPlatformSettings();
+  if (!settings.requireApprovalForDangerousTools) return;
+
+  const approvalId = createId("apr");
+  const createdAt = nowIso();
+  const metadata = {
+    toolName: request.toolName,
+    toolCallId: request.toolCall.id,
+    arguments: request.args,
+    iteration: request.iteration
+  };
+  const reason = approvalReason(request.toolName, request.args, request.risk);
+
+  db.prepare(
+    `INSERT INTO approvals (
+      id,
+      session_id,
+      tool_call_id,
+      action,
+      reason,
+      risk_level,
+      affected_project_id,
+      status,
+      metadata_json,
+      requested_by,
+      resolved_by,
+      created_at,
+      resolved_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NULL, ?, NULL)`
+  ).run(
+    approvalId,
+    sessionId,
+    request.toolCall.id,
+    request.toolName,
+    reason,
+    request.risk,
+    projectId,
+    JSON.stringify(metadata),
+    userId,
+    createdAt
+  );
+
+  db.prepare("UPDATE agent_tool_calls SET status = 'pending' WHERE id = ?").run(request.toolCall.id);
+  db.prepare("UPDATE agent_sessions SET status = 'waiting_for_approval', updated_at = ? WHERE id = ?").run(
+    nowIso(),
+    sessionId
+  );
+
+  const approval = mapApproval(
+    db.prepare("SELECT * FROM approvals WHERE id = ?").get(approvalId) as ApprovalRow
+  );
+  recordAudit("approval.requested", userId, {
+    approvalId,
+    sessionId,
+    toolCallId: request.toolCall.id,
+    action: request.toolName,
+    riskLevel: request.risk,
+    projectId,
+    arguments: request.args
+  });
+  broadcastSessionEvent(sessionId, { type: "approval_requested", approval });
+
+  const decision = await waitForApprovalDecision(approvalId, signal);
+  if (decision === "approved") {
+    db.prepare("UPDATE agent_sessions SET status = 'running', updated_at = ? WHERE id = ?").run(
+      nowIso(),
+      sessionId
+    );
+    db.prepare("UPDATE agent_tool_calls SET status = 'running' WHERE id = ?").run(request.toolCall.id);
+    return { approved: true };
+  }
+
+  db.prepare("UPDATE agent_sessions SET status = 'running', updated_at = ? WHERE id = ?").run(
+    nowIso(),
+    sessionId
+  );
+  const message =
+    decision === "cancelled"
+      ? "Tool execution was cancelled before approval."
+      : "Tool execution was rejected by the user.";
+  return {
+    approved: false,
+    status: "failed",
+    result: { error: message, approvalId, toolName: request.toolName }
+  };
+}
+
+function approvalReason(toolName: string, args: Record<string, unknown>, risk: string): string {
+  if (toolName.startsWith("shell_")) {
+    return `Run shell command: ${String(args.command ?? "(command not available)")}`;
+  }
+  if (toolName === "delete_file") {
+    return `Delete path: ${String(args.path ?? "(path not available)")}`;
+  }
+  if (toolName === "ws_create_service") {
+    return `Create workspace service: ${String(args.name ?? args.templateId ?? "(service not available)")}`;
+  }
+  if (toolName === "container_restart") {
+    return "Restart the project container.";
+  }
+  if (toolName === "restore_snapshot") {
+    return `Restore snapshot: ${String(args.snapshotId ?? "(snapshot not available)")}`;
+  }
+  return `Execute ${risk}-risk tool: ${toolName}`;
 }
 
 export async function runAgentLoop(sessionId: string, userId: string): Promise<void> {
@@ -402,7 +640,8 @@ export async function runAgentLoop(sessionId: string, userId: string): Promise<v
         sessionId
       },
       signal: controller.signal,
-      onEvent
+      onEvent,
+      beforeToolExecute: (request) => requestToolApproval(request, sessionId, userId, projectId, controller.signal)
     });
   } catch (error: any) {
     if (!controller.signal.aborted) {

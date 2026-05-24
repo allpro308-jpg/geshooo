@@ -1,11 +1,19 @@
 import { Router } from "express";
+import { z } from "zod";
 
 import { db, nowIso } from "@/db/database";
 import { requireAuth } from "@/modules/auth/auth-middleware";
 import { HttpError } from "@/shared/errors/http-error";
 import { createId } from "@/shared/ids/id";
 
-import { broadcastSessionEvent,cancelAgentSession, registerSessionStream, runAgentLoop } from "./agent-service";
+import {
+  broadcastSessionEvent,
+  cancelAgentSession,
+  listPendingApprovals,
+  registerSessionStream,
+  resolveApproval,
+  runAgentLoop
+} from "./agent-service";
 
 export const agentRouter = Router();
 
@@ -25,6 +33,20 @@ function mapSession(s: any) {
 }
 
 agentRouter.use(requireAuth);
+
+function ensureSessionAccess(sessionId: string, userId: string): void {
+  const row = db
+    .prepare(
+      `SELECT 1
+       FROM agent_sessions
+       JOIN workspace_groups ON workspace_groups.workspace_id = agent_sessions.workspace_id
+       JOIN group_members ON group_members.group_id = workspace_groups.group_id
+       WHERE agent_sessions.id = ? AND group_members.user_id = ?
+       LIMIT 1`
+    )
+    .get(sessionId, userId);
+  if (!row) throw new HttpError(404, "session_not_found", "Session not found.");
+}
 
 // List sessions for a project
 agentRouter.get("/sessions", (req, res, next) => {
@@ -97,6 +119,7 @@ agentRouter.post("/sessions", (req, res, next) => {
 agentRouter.get("/sessions/:id/messages", (req, res, next) => {
   try {
     const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
 
     const messages = db.prepare("SELECT * FROM agent_messages WHERE session_id = ? ORDER BY created_at ASC").all(sessionId) as any[];
 
@@ -137,6 +160,7 @@ agentRouter.get("/sessions/:id/messages", (req, res, next) => {
 agentRouter.patch("/sessions/:id", (req, res, next) => {
   try {
     const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
     const { title } = req.body;
     
     if (title !== undefined) {
@@ -159,6 +183,7 @@ agentRouter.patch("/sessions/:id", (req, res, next) => {
 agentRouter.delete("/sessions/:id", (req, res, next) => {
   try {
     const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
     // Check if session exists and user has access (simplified for brevity, should check workspace/project access ideally)
     const session = db.prepare("SELECT id FROM agent_sessions WHERE id = ?").get(sessionId);
     if (!session) throw new HttpError(404, "session_not_found", "Session not found.");
@@ -174,6 +199,7 @@ agentRouter.delete("/sessions/:id", (req, res, next) => {
 agentRouter.post("/sessions/:id/messages", (req, res, next) => {
   try {
     const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
     const { content, modelProvider, modelName, tempId } = req.body;
 
     if (!content) {
@@ -226,6 +252,7 @@ agentRouter.post("/sessions/:id/messages", (req, res, next) => {
 agentRouter.delete("/sessions/:id/messages/:messageId", (req, res, next) => {
   try {
     const { id, messageId } = req.params;
+    ensureSessionAccess(id, req.user!.id);
     db.prepare("DELETE FROM agent_messages WHERE id = ? AND session_id = ?").run(messageId, id);
     res.json({ success: true });
   } catch (err) {
@@ -237,6 +264,7 @@ agentRouter.delete("/sessions/:id/messages/:messageId", (req, res, next) => {
 agentRouter.get("/sessions/:id/stream", (req, res, next) => {
   try {
     const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -255,10 +283,37 @@ agentRouter.get("/sessions/:id/stream", (req, res, next) => {
   }
 });
 
+agentRouter.get("/sessions/:id/approvals", (req, res, next) => {
+  try {
+    const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
+    res.json({ approvals: listPendingApprovals(sessionId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+agentRouter.post("/approvals/:id/resolve", (req, res, next) => {
+  try {
+    const approvalId = req.params.id;
+    const body = z.object({ decision: z.enum(["approved", "rejected"]) }).parse(req.body);
+    const row = db.prepare("SELECT session_id FROM approvals WHERE id = ?").get(approvalId) as
+      | { session_id: string | null }
+      | undefined;
+    if (!row?.session_id) throw new HttpError(404, "approval_not_found", "Approval request not found.");
+    ensureSessionAccess(row.session_id, req.user!.id);
+    const approval = resolveApproval(approvalId, body.decision, req.user!.id);
+    res.json({ approval });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Cancel a running session
 agentRouter.post("/sessions/:id/cancel", (req, res, next) => {
   try {
     const sessionId = req.params.id;
+    ensureSessionAccess(sessionId, req.user!.id);
     cancelAgentSession(sessionId);
     res.json({ success: true });
   } catch (err) {

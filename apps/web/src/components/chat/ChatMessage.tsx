@@ -95,6 +95,7 @@ function ToolCallCard({ toolCall, isLast = false }: { toolCall: AgentToolCall, i
   const isCompleted = toolCall.status === "completed";
   const isFailed = toolCall.status === "failed";
   const isRunning = toolCall.status === "running";
+  const isPending = toolCall.status === "pending";
 
   return (
     <div className={`w-full transition-colors hover:bg-elevated/20 ${isLast ? "" : "border-b border-hairline"}`}>
@@ -146,6 +147,9 @@ function ToolCallCard({ toolCall, isLast = false }: { toolCall: AgentToolCall, i
           {isRunning && (
             <span className="h-2 w-2 animate-ping rounded-full bg-amber-500" />
           )}
+          {isPending && (
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+          )}
           {isCompleted && (
             <CheckCircle2 size={13} className="text-emerald-500" />
           )}
@@ -153,6 +157,7 @@ function ToolCallCard({ toolCall, isLast = false }: { toolCall: AgentToolCall, i
             <XCircle size={13} className="text-rose-500" />
           )}
           {isFailed && <span className="text-[10px] text-muted capitalize">Failed</span>}
+          {isPending && <span className="text-[10px] text-muted capitalize">Approval</span>}
           {isRunning && <span className="text-[10px] text-muted capitalize">Running</span>}
           {open ? <ChevronUp size={14} className="text-muted" /> : <ChevronDown size={14} className="text-muted" />}
         </div>

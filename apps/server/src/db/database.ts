@@ -290,11 +290,14 @@ export function migrate(): void {
 
     CREATE TABLE IF NOT EXISTS approvals (
       id TEXT PRIMARY KEY,
+      session_id TEXT REFERENCES agent_sessions(id) ON DELETE CASCADE,
+      tool_call_id TEXT,
       action TEXT NOT NULL,
       reason TEXT NOT NULL,
       risk_level TEXT NOT NULL,
       affected_project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
       status TEXT NOT NULL,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
       requested_by TEXT NOT NULL REFERENCES users(id),
       resolved_by TEXT REFERENCES users(id) ON DELETE SET NULL,
       created_at TEXT NOT NULL,
@@ -374,6 +377,9 @@ export function migrate(): void {
   addColumnIfMissing("projects", "last_status", "TEXT NOT NULL DEFAULT 'stopped'");
   addColumnIfMissing("projects", "host_port", "INTEGER");
   addColumnIfMissing("projects", "preview_token", "TEXT");
+  addColumnIfMissing("approvals", "session_id", "TEXT REFERENCES agent_sessions(id) ON DELETE CASCADE");
+  addColumnIfMissing("approvals", "tool_call_id", "TEXT");
+  addColumnIfMissing("approvals", "metadata_json", "TEXT NOT NULL DEFAULT '{}'");
   // Backfill preview tokens for legacy projects.
   const tokenless = db
     .prepare("SELECT id FROM projects WHERE preview_token IS NULL OR preview_token = ''")

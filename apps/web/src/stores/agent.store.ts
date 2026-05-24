@@ -1,4 +1,11 @@
-import type { AgentMessage, AgentSession, AgentStreamEvent,AgentToolCall, ProviderWithModels } from "@singulary/shared";
+import type {
+  AgentMessage,
+  AgentSession,
+  AgentStreamEvent,
+  AgentToolCall,
+  ApprovalRequest,
+  ProviderWithModels
+} from "@singulary/shared";
 import { create } from "zustand";
 
 import { agentService } from "@/services/agent.service";
@@ -8,6 +15,7 @@ type AgentState = {
   activeSessionId: string | null;
   activeSession: AgentSession | null;
   messages: AgentMessage[];
+  pendingApprovals: ApprovalRequest[];
   providers: ProviderWithModels[];
   
   isLoadingSessions: boolean;
@@ -35,6 +43,7 @@ type AgentState = {
   selectSession: (sessionId: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   cancelGeneration: () => Promise<void>;
+  resolveApproval: (approvalId: string, decision: "approved" | "rejected") => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   fetchModels: () => Promise<void>;
   selectModel: (provider: string, model: string) => void;
@@ -53,6 +62,7 @@ export const useAgentStore = create<AgentState>((set, get) => {
     activeSessionId: null,
     activeSession: null,
     messages: [],
+    pendingApprovals: [],
     providers: [],
     
     isLoadingSessions: true,
@@ -139,7 +149,8 @@ export const useAgentStore = create<AgentState>((set, get) => {
         isGenerating: false,
         streamingMessageId: null,
         streamingContent: "",
-        streamingToolCalls: []
+        streamingToolCalls: [],
+        pendingApprovals: []
       });
 
       try {
@@ -148,11 +159,15 @@ export const useAgentStore = create<AgentState>((set, get) => {
           localStorage.setItem(`singulary_last_session_${session.projectId}`, session.id);
         }
 
-        const { messages } = await agentService.getMessages(sessionId);
+        const [{ messages }, { approvals }] = await Promise.all([
+          agentService.getMessages(sessionId),
+          agentService.getPendingApprovals(sessionId)
+        ]);
         
         set({
           activeSession: session,
           messages,
+          pendingApprovals: approvals,
           selectedProvider: session?.modelProvider || get().selectedProvider,
           selectedModel: session?.modelName || get().selectedModel
         });
@@ -243,6 +258,40 @@ export const useAgentStore = create<AgentState>((set, get) => {
                     : tc
                 )
               }));
+            } else if (data.type === "approval_requested") {
+              set((state) => ({
+                pendingApprovals: state.pendingApprovals.some((approval) => approval.id === data.approval.id)
+                  ? state.pendingApprovals
+                  : [...state.pendingApprovals, data.approval],
+                activeSession: state.activeSession
+                  ? { ...state.activeSession, status: "waiting_for_approval" }
+                  : state.activeSession,
+                sessions: state.sessions.map((session) =>
+                  session.id === activeSessionId ? { ...session, status: "waiting_for_approval" } : session
+                ),
+                streamingToolCalls: state.streamingToolCalls.map((tc) =>
+                  tc.id === data.approval.toolCallId ? { ...tc, status: "pending" } : tc
+                )
+              }));
+            } else if (data.type === "approval_resolved") {
+              set((state) => ({
+                pendingApprovals: state.pendingApprovals.filter((approval) => approval.id !== data.approvalId),
+                activeSession: state.activeSession
+                  ? { ...state.activeSession, status: "running" }
+                  : state.activeSession,
+                sessions: state.sessions.map((session) =>
+                  session.id === activeSessionId
+                    ? { ...session, status: "running" }
+                    : session
+                ),
+                streamingToolCalls: state.streamingToolCalls.map((tc) =>
+                  state.pendingApprovals.some(
+                    (approval) => approval.id === data.approvalId && approval.toolCallId === tc.id
+                  )
+                    ? { ...tc, status: data.status === "approved" ? "running" : "failed" }
+                    : tc
+                )
+              }));
             } else if (data.type === "message_added") {
               set((state) => {
                 // Remove the optimistic temp message and prevent appending it twice
@@ -323,7 +372,28 @@ export const useAgentStore = create<AgentState>((set, get) => {
         console.error("Failed to cancel generation", err);
       } finally {
         set({ isGenerating: false, streamingMessageId: null, streamingContent: "", streamingToolCalls: [] });
+        set({ pendingApprovals: [] });
         // reload
+        await get().selectSession(activeSessionId);
+      }
+    },
+
+    resolveApproval: async (approvalId, decision) => {
+      const { activeSessionId } = get();
+      if (!activeSessionId) return;
+      const approval = get().pendingApprovals.find((item) => item.id === approvalId);
+      set((state) => ({
+        pendingApprovals: state.pendingApprovals.filter((item) => item.id !== approvalId),
+        streamingToolCalls: state.streamingToolCalls.map((tc) =>
+          approval && tc.id === approval.toolCallId
+            ? { ...tc, status: decision === "approved" ? "running" : "failed" }
+            : tc
+        )
+      }));
+      try {
+        await agentService.resolveApproval(approvalId, decision);
+      } catch (err) {
+        console.error("Failed to resolve approval", err);
         await get().selectSession(activeSessionId);
       }
     },
@@ -389,6 +459,7 @@ export const useAgentStore = create<AgentState>((set, get) => {
         activeSessionId: null,
         activeSession: null,
         messages: [],
+        pendingApprovals: [],
         streamingMessageId: null,
         streamingContent: "",
         streamingToolCalls: []

@@ -1,4 +1,4 @@
-import type { AgentMessage, AgentSession, ProviderWithModels } from "@singulary/shared";
+import type { AgentMessage, AgentSession, ApprovalRequest, ProviderWithModels } from "@singulary/shared";
 
 import { apiDelete, apiGet, apiPatch,apiPost } from "./api";
 
@@ -29,6 +29,10 @@ export const agentService = {
     return apiGet<{ messages: AgentMessage[] }>(`/api/agent/sessions/${sessionId}/messages`);
   },
 
+  getPendingApprovals: (sessionId: string) => {
+    return apiGet<{ approvals: ApprovalRequest[] }>(`/api/agent/sessions/${sessionId}/approvals`);
+  },
+
   sendMessage: (
     sessionId: string,
     input: { content: string; modelProvider?: string; modelName?: string; tempId?: string }
@@ -38,6 +42,10 @@ export const agentService = {
 
   cancelSession: (sessionId: string) => {
     return apiPost<{ success: boolean }>(`/api/agent/sessions/${sessionId}/cancel`);
+  },
+
+  resolveApproval: (approvalId: string, decision: "approved" | "rejected") => {
+    return apiPost<{ approval: ApprovalRequest }>(`/api/agent/approvals/${approvalId}/resolve`, { decision });
   },
 
   deleteMessage: (sessionId: string, messageId: string) => {

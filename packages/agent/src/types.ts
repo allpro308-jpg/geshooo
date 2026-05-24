@@ -103,6 +103,23 @@ export type AgentEvent<TToolResult = unknown> =
   | { type: "error"; error: string }
   | { type: "done"; reason: "completed" | "cancelled" | "max_loops" };
 
+export type ToolGateDecision =
+  | { approved: true }
+  | {
+      approved: false;
+      result: unknown;
+      status?: "completed" | "failed";
+    };
+
+export type ToolGateRequest<TCtx = unknown> = {
+  toolCall: ChatToolCall;
+  toolName: string;
+  args: Record<string, unknown>;
+  risk: ToolRiskLevel;
+  iteration: number;
+  context: TCtx;
+};
+
 export interface AgentRunOptions<TCtx = unknown> {
   /** Existing conversation. The system prompt is prepended automatically. */
   messages: ChatMessage[];
@@ -114,6 +131,8 @@ export interface AgentRunOptions<TCtx = unknown> {
   config?: Partial<ModelConfig>;
   /** Event sink. Called synchronously as events occur. */
   onEvent?: (event: AgentEvent) => void;
+  /** Optional host gate. Return approved=false to skip local tool execution and feed the result to the model. */
+  beforeToolExecute?: (request: ToolGateRequest<TCtx>) => Promise<ToolGateDecision | void> | ToolGateDecision | void;
 }
 
 export interface AgentRunResult {

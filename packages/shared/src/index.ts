@@ -584,6 +584,20 @@ export type AgentToolCall = {
   completedAt: string | null;
 };
 
+export type ApprovalRequest = {
+  id: string;
+  sessionId: string;
+  toolCallId: string;
+  action: string;
+  reason: string;
+  riskLevel: 'high' | 'dangerous';
+  affectedProjectId: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
 export type AgentMessage = {
   id: string;
   sessionId: string;
@@ -644,6 +658,8 @@ export type AgentStreamEvent =
   | { type: 'content_delta'; delta: string }
   | { type: 'tool_call_start'; toolCall: AgentToolCall }
   | { type: 'tool_call_result'; toolCallId: string; result: unknown; status: 'completed' | 'failed' }
+  | { type: 'approval_requested'; approval: ApprovalRequest }
+  | { type: 'approval_resolved'; approvalId: string; status: 'approved' | 'rejected' | 'cancelled' }
   | { type: 'message_added'; message: AgentMessage; tempId?: string }
   | { type: 'message_end'; message: AgentMessage }
   | { type: 'error'; error: string }

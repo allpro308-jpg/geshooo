@@ -156,13 +156,46 @@ export class Agent<TCtx = unknown> {
             const risk = tool?._risk ?? "safe";
             emit({ type: "tool_call_start", toolCall, iteration: iterations, risk });
 
-            const { result, status, durationMs } = await this.executeTool(
-              toolCall,
-              options.context,
-              iterations,
-              defaultTimeoutSec,
-              options.signal
-            );
+            const startedAt = Date.now();
+            let gateDecision;
+            try {
+              gateDecision = await Promise.resolve(
+                options.beforeToolExecute?.({
+                  toolCall,
+                  toolName: toolCall.function.name,
+                  args: parseToolArguments(toolCall),
+                  risk,
+                  iteration: iterations,
+                  context: options.context
+                })
+              );
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              gateDecision = {
+                approved: false as const,
+                status: "failed" as const,
+                result: { error: message }
+              };
+            }
+            if (options.signal?.aborted) {
+              exitReason = "cancelled";
+              break;
+            }
+
+            const { result, status, durationMs } =
+              gateDecision && gateDecision.approved === false
+                ? {
+                    result: gateDecision.result,
+                    status: gateDecision.status ?? "failed",
+                    durationMs: Date.now() - startedAt
+                  }
+                : await this.executeTool(
+                    toolCall,
+                    options.context,
+                    iterations,
+                    defaultTimeoutSec,
+                    options.signal
+                  );
 
             emit({
               type: "tool_call_result",
@@ -378,6 +411,16 @@ function stringifyToolResult(result: unknown): string {
     return JSON.stringify(result ?? null);
   } catch {
     return String(result);
+  }
+}
+
+function parseToolArguments(toolCall: ChatToolCall): Record<string, unknown> {
+  if (!toolCall.function.arguments) return {};
+  try {
+    const parsed = JSON.parse(toolCall.function.arguments);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }
 

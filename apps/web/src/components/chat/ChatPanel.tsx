@@ -1,3 +1,4 @@
+import type { ApprovalRequest } from "@singulary/shared";
 import {
   AlertTriangle,
   Check,
@@ -12,8 +13,9 @@ import {
   Square,
   Terminal,
   Trash2,
-  X} from "lucide-react";
-import { useEffect, useRef,useState } from "react";
+  X
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { useAgentStore } from "@/stores/agent.store";
@@ -31,6 +33,7 @@ export function ChatPanel() {
     activeSessionId,
     activeSession,
     messages,
+    pendingApprovals,
     providers,
     isLoadingSessions,
     isLoadingMessages,
@@ -48,6 +51,7 @@ export function ChatPanel() {
     selectSession,
     sendMessage,
     cancelGeneration,
+    resolveApproval,
     fetchModels,
     renameSession,
     removeSession
@@ -430,6 +434,63 @@ export function ChatPanel() {
         isOpen={isModelSelectorOpen}
         onClose={() => setIsModelSelectorOpen(false)}
       />
+
+      {pendingApprovals.length > 0 ? (
+        <ApprovalModal
+          approval={pendingApprovals[0]}
+          onApprove={() => resolveApproval(pendingApprovals[0].id, "approved")}
+          onReject={() => resolveApproval(pendingApprovals[0].id, "rejected")}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ApprovalModal({
+  approval,
+  onApprove,
+  onReject
+}: {
+  approval: ApprovalRequest;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const args = approval.metadata?.arguments ?? {};
+  return (
+    <div className="absolute inset-0 z-40 flex items-end bg-bg/60 p-3 backdrop-blur-sm">
+      <div className="w-full overflow-hidden rounded-xl border border-amber-500/30 bg-surface shadow-2xl">
+        <div className="border-b border-hairline px-4 py-3">
+          <div className="flex items-center gap-2 text-amber-500">
+            <AlertTriangle size={15} />
+            <span className="text-xs font-bold uppercase tracking-tightish">Approval required</span>
+          </div>
+          <div className="mt-2 text-sm font-semibold text-ink">{approval.reason}</div>
+          <div className="mt-1 font-mono text-[11px] text-muted">
+            {approval.action} · {approval.riskLevel}
+          </div>
+        </div>
+        <div className="max-h-56 overflow-auto px-4 py-3">
+          <pre className="rounded-lg border border-hairline bg-elevated p-3 text-[11px] leading-relaxed text-ink">
+            {JSON.stringify(args, null, 2)}
+          </pre>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-hairline px-4 py-3">
+          <button
+            type="button"
+            onClick={onReject}
+            className="focus-ring h-8 rounded-lg border border-line px-3 text-xs font-medium text-muted transition-colors hover:border-rose-500/40 hover:text-rose-500"
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            onClick={onApprove}
+            className="focus-ring h-8 rounded-lg bg-amber-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-amber-400"
+          >
+            Approve
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

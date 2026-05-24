@@ -11,7 +11,7 @@
     "start": "pnpm --filter @singulary/server start",
     "admin:create": "pnpm --filter @singulary/server admin:create",
     "setup:status": "pnpm --filter @singulary/server setup:status",
-    "typecheck": "pnpm --filter @singulary/shared typecheck && pnpm --filter @singulary/inference typecheck && pnpm --filter @singulary/agent typecheck && pnpm --filter @singulary/server typecheck && pnpm --filter @singulary/web typecheck",
+    "typecheck": "pnpm --filter @singulary/shared build && pnpm --filter @singulary/inference build && pnpm --filter @singulary/agent build && pnpm --filter @singulary/shared typecheck && pnpm --filter @singulary/inference typecheck && pnpm --filter @singulary/agent typecheck && pnpm --filter @singulary/server typecheck && pnpm --filter @singulary/web typecheck",
     "lint": "eslint . --fix",
     "prepare": "husky"
   },
