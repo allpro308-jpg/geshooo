@@ -188,7 +188,7 @@ This roadmap tracks implementation status one item at a time. Status values:
 - `Done` Add agent .gitignore-aware file operations.
 - `Done` Add streaming chat responses with token usage recording.
 - `Done` Add automatic snapshots before AI writes (one per turn).
-- `Planned` Add approval requests for risky tools.
+- `Done` Add approval requests for risky tools.
 - `Planned` Add specialized agents (planner, reviewer, runtime).
 
 ## 12. Security and Audit
@@ -201,7 +201,7 @@ This roadmap tracks implementation status one item at a time. Status values:
 - `Done` Policy service enforces provider/model/quota at every model call.
 - `Done` Audit risky agent tool calls (high/dangerous) including shell, service create, restart, file deletes, snapshot ops.
 - `Done` Audit snapshot create/restore/file-restore actions.
-- `Planned` Add approval UI.
+- `Done` Add approval UI.
 - `Planned` Add secret metadata-only access for AI context.
 - `Planned` Add production security hardening checklist.
 
@@ -226,12 +226,11 @@ This roadmap tracks implementation status one item at a time. Status values:
 ## 15. Near-Term Implementation Order
 
 1. Snapshot diff viewer UI + back/forward navigation affordance.
-2. Approval flow (table → request handler → SSE event → UI modal) for high/dangerous tools.
-3. Workspace member/group access management UI.
-4. Workspace-level env vars UI (API already exists).
-5. Subdomain-based preview reverse proxy + multi-session preview.
-6. Org/instance env inheritance levels.
-7. Effective permissions viewer for users/groups.
-8. Non-root container users + runtime policy gates.
-9. Lint/format and automated test scaffolding.
-10. Long-form docs: API reference, runtime architecture, snapshot store, agent tools, deployment.
+2. Workspace member/group access management UI.
+3. Workspace-level env vars UI (API already exists).
+4. Subdomain-based preview reverse proxy + multi-session preview.
+5. Org/instance env inheritance levels.
+6. Effective permissions viewer for users/groups.
+7. Non-root container users + runtime policy gates.
+8. Lint/format and automated test scaffolding.
+9. Long-form docs: API reference, runtime architecture, snapshot store, agent tools, deployment.

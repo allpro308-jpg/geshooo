@@ -162,7 +162,7 @@ This file tracks the remaining work needed to turn the current platform foundati
 - `[x]` Tool registry (`@singulary/agent` `Agent.registerTool` with name/description/parameters/handler).
 - `[x]` Risk levels: safe, medium, high, dangerous (via `_risk`).
 - `[~]` Permission checks before tool execution (host can inspect `_risk` in events).
-- `[ ]` Approval checks before risky tools (UI flow pending).
+- `[x]` Approval checks before risky tools.
 - `[x]` `filesystem.list_files`.
 - `[x]` `filesystem.read_file`.
 - `[x]` `filesystem.write_file`.
@@ -181,10 +181,11 @@ This file tracks the remaining work needed to turn the current platform foundati
 
 - `[x]` Audit log table exists.
 - `[x]` Admin events are audited (settings, users, groups, providers, quotas, Docker config).
-- `[ ]` Approval request table usage.
-- `[ ]` Approval UI.
-- `[ ]` Approve/reject/modify actions.
-- `[ ]` Show risk level, reason, command/diff, and impact.
+- `[x]` Approval request table usage.
+- `[x]` Approval UI.
+- `[x]` Approve/reject actions.
+- `[ ]` Modify approval actions.
+- `[x]` Show risk level, reason, command/diff, and impact.
 - `[x]` Audit every high-risk file delete + agent shell + service creation + container restart + snapshot operation.
 - `[x]` Audit every shell command (logged as `agent.tool_called.high`).
 - `[ ]` Audit every secret reveal.
@@ -244,12 +245,11 @@ This file tracks the remaining work needed to turn the current platform foundati
 ## Recommended Next Implementation Order
 
 1. Snapshot diff viewer UI + back/forward navigation affordance.
-2. Approval flow (table → request handler → SSE event → UI modal).
-3. Workspace member/group access management UI.
-4. Workspace-level env vars UI (API already exists).
-5. Subdomain-based preview reverse proxy + multi-session preview.
-6. Org/instance env inheritance levels.
-7. Effective permissions viewer for users/groups.
-8. Non-root container users + runtime policy gates.
-9. Lint/format and automated test scaffolding.
-10. Long-form docs: API reference, runtime architecture, snapshot store, agent tools.
+2. Workspace member/group access management UI.
+3. Workspace-level env vars UI (API already exists).
+4. Subdomain-based preview reverse proxy + multi-session preview.
+5. Org/instance env inheritance levels.
+6. Effective permissions viewer for users/groups.
+7. Non-root container users + runtime policy gates.
+8. Lint/format and automated test scaffolding.
+9. Long-form docs: API reference, runtime architecture, snapshot store, agent tools.

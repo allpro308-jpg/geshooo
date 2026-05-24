@@ -109,7 +109,7 @@ The agent exposes a curated toolset — not raw shell access — so every action
 | Runtime     | `container_restart`, `project_settings` (image, install/start commands) |
 | Workspace   | `ws_create_service` (provision a database, cache, queue, or storage backend) |
 
-`write_diff` does anchor-based exact-match replacements (no broken context windows), and `.gitignore` rules are enforced at the tool boundary so the agent never reads `node_modules`, lock files, or build output.
+`write_diff` does anchor-based exact-match replacements (no broken context windows), `.gitignore` rules are enforced at the tool boundary so the agent never reads `node_modules`, lock files, or build output, and dangerous tool calls can pause for human approval when that platform setting is enabled.
 
 ---
 
@@ -213,6 +213,7 @@ Already shipped:
 - ✅ Service catalog with generated credentials and env injection
 - ✅ Interactive shell containers per project
 - ✅ Agent chat with streaming, tool calls, cancellation, session resume
+- ✅ Approval flow for high/dangerous agent tool calls
 - ✅ Path-based preview reverse proxy
 - ✅ Single production container + SQLite volume
 
@@ -220,7 +221,6 @@ Next up:
 
 - 🔜 Snapshot store with content-addressed blobs, diff viewer, branching
 - 🔜 Automatic snapshot before every AI write + rollback UX
-- 🔜 Approval flow for risky tool calls
 - 🔜 Quota and policy enforcement at model-call time
 - 🔜 Subdomain-based preview reverse proxy
 - 🔜 Workspace-level env vars with inheritance (instance → org → workspace → project)
