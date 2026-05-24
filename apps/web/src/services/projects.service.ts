@@ -7,10 +7,22 @@ import type {
   ProjectLogStats,
   ProjectRuntimeInfo,
   ProjectShell,
-  ProjectTemplate
+  ProjectTemplate,
+  Snapshot,
+  SnapshotDiff,
+  SnapshotFileEntry
 } from "@singulary/shared";
 
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "./api";
+
+export type SnapshotFileBlob = { content: string; binary: boolean; size: number };
+
+export type SnapshotRestoreResult = {
+  snapshot: Snapshot;
+  written: number;
+  removed: number;
+  checkpoint: Snapshot | null;
+};
 
 export type ProjectAction = "start" | "stop" | "restart" | "destroy";
 
@@ -66,6 +78,32 @@ export const projectsService = {
   createShell: (projectId: string, label?: string) =>
     apiPost<{ shell: ProjectShell }>(`/api/projects/${projectId}/shells`, label ? { label } : {}),
   closeShell: (projectId: string, shellId: string) =>
-    apiDelete<void>(`/api/projects/${projectId}/shells/${shellId}`)
+    apiDelete<void>(`/api/projects/${projectId}/shells/${shellId}`),
+  listSnapshots: (projectId: string) =>
+    apiGet<{ snapshots: Snapshot[] }>(`/api/projects/${projectId}/snapshots`),
+  createSnapshot: (projectId: string, message?: string) =>
+    apiPost<{ snapshot: Snapshot }>(
+      `/api/projects/${projectId}/snapshots`,
+      message ? { message } : {}
+    ),
+  getSnapshot: (snapshotId: string) =>
+    apiGet<{ snapshot: Snapshot }>(`/api/snapshots/${snapshotId}`),
+  listSnapshotFiles: (snapshotId: string) =>
+    apiGet<{ files: SnapshotFileEntry[] }>(`/api/snapshots/${snapshotId}/files`),
+  readSnapshotFile: (snapshotId: string, path: string) =>
+    apiGet<SnapshotFileBlob>(
+      `/api/snapshots/${snapshotId}/file?path=${encodeURIComponent(path)}`
+    ),
+  diffSnapshots: (snapshotId: string, baseId: string | null) => {
+    const qs = baseId ? `?base=${encodeURIComponent(baseId)}` : "";
+    return apiGet<{ diff: SnapshotDiff }>(`/api/snapshots/${snapshotId}/diff${qs}`);
+  },
+  restoreSnapshot: (snapshotId: string, checkpoint = true) =>
+    apiPost<SnapshotRestoreResult>(`/api/snapshots/${snapshotId}/restore`, { checkpoint }),
+  restoreSnapshotFile: (snapshotId: string, path: string) =>
+    apiPost<{ snapshot: Snapshot; restored: boolean }>(
+      `/api/snapshots/${snapshotId}/restore-file`,
+      { path }
+    )
 };
 

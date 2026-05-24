@@ -6,7 +6,7 @@ import {
   Code2,
   Database,
   FolderGit2,
-  GitBranch,
+  History,
   Monitor,
   Plus,
   Settings as SettingsIcon,
@@ -317,7 +317,7 @@ const tabIcons = {
   code: <Code2 size={14} />,
   env: <SlidersHorizontal size={14} />,
   preview: <Monitor size={14} />,
-  branches: <GitBranch size={14} />,
+  snapshots: <History size={14} />,
   connections: <Cable size={14} />,
   settings: <SettingsIcon size={14} />
 };

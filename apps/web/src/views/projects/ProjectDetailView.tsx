@@ -11,6 +11,7 @@ import { CodeTab } from "./CodeTab";
 import { EnvironmentTab } from "./EnvironmentTab";
 import { PreviewTab } from "./PreviewTab";
 import { SettingsTab } from "./SettingsTab";
+import { SnapshotsTab } from "./SnapshotsTab";
 import { parseTab, type ProjectTab } from "./tabs";
 
 export function ProjectDetailPage() {
@@ -39,6 +40,7 @@ export function ProjectDetailPage() {
     }
     if (tab === "code") return <CodeTab projectId={projectId} />;
     if (tab === "preview") return <PreviewTab project={project} />;
+    if (tab === "snapshots") return <SnapshotsTab projectId={projectId} />;
     if (tab === "environment") {
       return (
         <div className="mx-auto w-full max-w-4xl overflow-y-auto px-6 py-8">
@@ -77,10 +79,7 @@ function ComingSoon({ tab }: { tab: ProjectTab }) {
     environment: { title: "Environment", hint: "" },
     preview: { title: "Preview", hint: "" },
     settings: { title: "Settings", hint: "" },
-    branches: {
-      title: "Snapshot branches",
-      hint: "Branch from snapshots, run multiple AI experiments, compare and merge."
-    },
+    snapshots: { title: "Snapshots", hint: "" },
     connections: {
       title: "Connections",
       hint: "Wire this project to workspace services and other projects via env aliases."
