@@ -1,26 +1,27 @@
-import type { ApprovalRequest } from "@singulary/shared";
+import type { AgentApprovalMode, ApprovalRequest } from "@singulary/shared";
 import {
   AlertTriangle,
+  Bug,
   Check,
   ChevronDown,
   Cpu,
   FileCode,
-  MessageSquare,
   Pencil,
   Plus,
   Send,
+  ShieldCheck,
   Sparkles,
   Square,
   Terminal,
   Trash2,
-  X
+  Zap
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { useAgentStore } from "@/stores/agent.store";
 
-import { ChatMessage } from "./ChatMessage";
+import { ChatMessage, messageHasVisibleContent } from "./ChatMessage";
 import { ModelSelectorModal } from "./ModelSelectorModal";
 
 export function ChatPanel() {
@@ -42,9 +43,11 @@ export function ChatPanel() {
     chatPanelWidth,
     selectedProvider,
     selectedModel,
+    approvalMode,
+    debugMode,
+    streamingMessageId,
     streamingContent,
     streamingToolCalls,
-    toggleChatPanel,
     setChatPanelWidth,
     fetchSessions,
     createSession,
@@ -54,7 +57,9 @@ export function ChatPanel() {
     resolveApproval,
     fetchModels,
     renameSession,
-    removeSession
+    removeSession,
+    setApprovalMode,
+    setDebugMode
   } = useAgentStore();
 
   const [isResizing, setIsResizing] = useState(false);
@@ -172,7 +177,7 @@ export function ChatPanel() {
     >
       {/* Header */}
       <header className="flex h-14 shrink-0 items-center justify-between px-4 pt-1 gap-3 bg-surface/50 backdrop-blur-md z-10">
-        <div className="relative flex flex-1 items-center px-1 text-xs gap-2">
+        <div className="relative flex flex-1 items-center px-1 text-xs min-w-0">
           {isEditingTitle ? (
             <div className="flex w-full items-center gap-1">
               <input
@@ -196,69 +201,78 @@ export function ChatPanel() {
                   renameSession(activeSessionId!, editTitleValue);
                   setIsEditingTitle(false);
                 }}
-                className="p-1 hover:text-emerald-500 transition-colors"
+                className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-emerald-500 transition-colors outline-none"
               >
-                <Check size={14} />
+                <Check size={15} />
               </button>
             </div>
           ) : (
-            <>
-              <select
-                value={activeSessionId || ""}
-                onChange={(e) => selectSession(e.target.value)}
-                className="bg-transparent border-0 outline-none text-[13.5px] font-bold tracking-tight text-ink w-full cursor-pointer truncate focus:ring-0 hover:text-indigo-400 transition-colors"
-              >
-                {sessions.map((s, idx) => (
-                  <option key={s.id} value={s.id} className="font-medium bg-surface text-ink">
-                    {s.title || `Chat ${sessions.length - idx}`}
-                  </option>
-                ))}
-              </select>
-              {activeSessionId && (
-                <div className="flex items-center opacity-50 hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => {
-                      setEditTitleValue(activeSession?.title || "");
-                      setIsEditingTitle(true);
-                    }}
-                    title="Rename Chat"
-                    className="p-1 hover:text-amber-500 transition-colors"
-                  >
-                    <Pencil size={13} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm("Are you sure you want to delete this chat?")) {
-                        removeSession(activeSessionId);
-                      }
-                    }}
-                    title="Delete Chat"
-                    className="p-1 hover:text-rose-500 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              )}
-            </>
+            <select
+              value={activeSessionId || ""}
+              onChange={(e) => selectSession(e.target.value)}
+              className="bg-transparent border-0 outline-none text-[13.5px] font-bold tracking-tight text-ink w-full cursor-pointer truncate focus:ring-0 hover:text-indigo-400 transition-colors"
+            >
+              {sessions.map((s, idx) => (
+                <option key={s.id} value={s.id} className="font-medium bg-surface text-ink">
+                  {s.title || `Chat ${sessions.length - idx}`}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={handleNewSession}
             disabled={isGenerating}
-            title="Start new conversation"
+            title="New chat"
             className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-ink disabled:opacity-50 transition-colors outline-none"
           >
             <Plus size={15} />
           </button>
-          
+
+          {activeSessionId && !isEditingTitle && (
+            <button
+              onClick={() => {
+                setEditTitleValue(activeSession?.title || "");
+                setIsEditingTitle(true);
+              }}
+              title="Rename chat"
+              className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-amber-500 transition-colors outline-none"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+
+          {activeSessionId && !isEditingTitle && (
+            <button
+              onClick={() => {
+                if (confirm("Are you sure you want to delete this chat?")) {
+                  removeSession(activeSessionId);
+                }
+              }}
+              title="Delete chat"
+              className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-rose-500 transition-colors outline-none"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+
           <button
-            onClick={() => toggleChatPanel(false)}
-            title="Toggle chat"
-            className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-ink transition-colors outline-none"
+            onClick={() => setDebugMode(!debugMode)}
+            title={
+              debugMode
+                ? "Debug mode ON — click to hide noisy tool calls"
+                : "Debug mode OFF — click to show all tool calls"
+            }
+            aria-pressed={debugMode}
+            className={`focus-ring grid h-8 w-8 place-items-center rounded-lg border transition-colors outline-none ${
+              debugMode
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                : "border-hairline bg-elevated text-muted hover:text-ink"
+            }`}
           >
-            <X size={15} />
+            <Bug size={15} />
           </button>
         </div>
       </header>
@@ -299,71 +313,60 @@ export function ChatPanel() {
         ) : (
           <>
             {(() => {
-              const grouped: any[] = [];
-              let currentAssistantGroup: any = null;
-
+              // Build the list of items to render in chronological order.
+              // We deduplicate by id (the optimistic message_start commit + DB
+              // reload can produce duplicates with the same server id) and
+              // drop messages whose entire content is invisible at the current
+              // debug level (e.g. an assistant turn whose only tool call is
+              // the internal set_change_title).
+              const items: any[] = [];
+              const seenIds = new Set<string>();
               for (const msg of messages) {
-                if (msg.role === "tool") continue;
+                if (seenIds.has(msg.id)) continue;
+                seenIds.add(msg.id);
+                if (!messageHasVisibleContent(msg, debugMode)) continue;
+                items.push(msg);
+              }
 
-                if (msg.role === "assistant") {
-                  if (!currentAssistantGroup) {
-                    currentAssistantGroup = {
-                      ...msg,
-                      toolCalls: msg.toolCalls ? [...msg.toolCalls] : [],
-                      content: msg.content || ""
-                    };
-                    grouped.push(currentAssistantGroup);
-                  } else {
-                    if (msg.content) {
-                      currentAssistantGroup.content += (currentAssistantGroup.content ? "\n\n" : "") + msg.content;
-                    }
-                    if (msg.toolCalls) {
-                      currentAssistantGroup.toolCalls.push(...msg.toolCalls);
-                    }
-                  }
-                } else {
-                  currentAssistantGroup = null;
-                  grouped.push(msg);
+              // Append the live streaming bubble for the current iteration.
+              if (isGenerating) {
+                const liveId = streamingMessageId ?? "streaming";
+                const liveMsg = {
+                  id: liveId,
+                  role: "assistant" as const,
+                  content: streamingContent || null,
+                  toolCalls:
+                    streamingToolCalls.length > 0 ? streamingToolCalls : null,
+                  isStreaming: true
+                };
+                if (!seenIds.has(liveId) && messageHasVisibleContent(liveMsg, debugMode)) {
+                  items.push(liveMsg);
                 }
               }
 
-              // Handle streaming state merging
-              if (isGenerating && (streamingContent || streamingToolCalls.length > 0)) {
-                if (currentAssistantGroup) {
-                  if (streamingContent) {
-                    currentAssistantGroup.content += (currentAssistantGroup.content ? "" : "") + streamingContent;
-                  }
-                  if (streamingToolCalls) {
-                    currentAssistantGroup.toolCalls.push(...streamingToolCalls);
-                  }
-                  currentAssistantGroup.isStreaming = true;
-                } else {
-                  grouped.push({
-                    id: "streaming",
-                    role: "assistant",
-                    content: streamingContent,
-                    toolCalls: streamingToolCalls,
-                    isStreaming: true
-                  });
-                }
-              } else if (isGenerating && !streamingContent && streamingToolCalls.length === 0) {
-                if (!currentAssistantGroup) {
-                  grouped.push({
-                    id: "thinking",
-                    role: "assistant",
-                    content: null,
-                    toolCalls: null,
-                    isStreaming: true
-                  });
-                } else {
-                  currentAssistantGroup.isStreaming = true;
-                }
-              }
-
-              return grouped.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} isStreaming={msg.isStreaming} />
-              ));
+              // Suppress the "Agent" label on consecutive assistant bubbles
+              // so a multi-iteration turn reads as one continuous response
+              // even though each bubble is a separate message.
+              let prevRole: string | null = null;
+              return items.map((msg) => {
+                const isConsecutive = prevRole === "assistant" && msg.role === "assistant";
+                prevRole = msg.role;
+                return (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    isStreaming={Boolean(msg.isStreaming)}
+                    isConsecutive={isConsecutive}
+                    debug={debugMode}
+                  />
+                );
+              });
             })()}
+
+            {/* Persistent thinking indicator — pinned below the last message
+                whenever the agent is generating so the user knows the agent
+                is alive even during long tool-call sequences. */}
+            {isGenerating ? <ThinkingIndicator /> : null}
           </>
         )}
         <div ref={messagesEndRef} />
@@ -393,6 +396,10 @@ export function ChatPanel() {
                 <Cpu size={11} className="text-accent shrink-0" />
                 <span className="font-mono max-w-[110px] truncate">{selectedModel || "Select LLM"}</span>
               </button>
+              <ApprovalModeSelect
+                value={approvalMode}
+                onChange={(mode) => void setApprovalMode(mode)}
+              />
               {quotaWarning && (
                 <div className="flex items-center gap-1 text-[9px] font-semibold text-rose-500 animate-pulse">
                   <AlertTriangle size={10} />
@@ -443,6 +450,73 @@ export function ChatPanel() {
         />
       ) : null}
     </div>
+  );
+}
+
+function ThinkingIndicator() {
+  return (
+    <div
+      className="flex items-center gap-2 px-2 pt-1 pb-2 text-[11px] text-muted"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="flex items-center gap-1">
+        <span
+          className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400"
+          style={{ animationDelay: "0ms" }}
+        />
+        <span
+          className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400"
+          style={{ animationDelay: "140ms" }}
+        />
+        <span
+          className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400"
+          style={{ animationDelay: "280ms" }}
+        />
+      </span>
+      <span className="text-dim">Agent is working…</span>
+    </div>
+  );
+}
+
+function ApprovalModeSelect({
+  value,
+  onChange
+}: {
+  value: AgentApprovalMode;
+  onChange: (mode: AgentApprovalMode) => void;
+}) {
+  const isAuto = value === "auto";
+  const Icon = isAuto ? Zap : ShieldCheck;
+  const labelClass = isAuto ? "text-amber-400" : "text-muted";
+  const ringClass = isAuto
+    ? "border-amber-500/40 bg-amber-500/10 hover:border-amber-400"
+    : "border-hairline bg-surface hover:border-muted/30 hover:text-ink";
+  return (
+    <label
+      title={
+        isAuto
+          ? "Auto-approve risky tool calls (file deletes, shell, restarts, snapshot restore, service create). Sent at session start and on every message."
+          : "Pause and ask before running risky tool calls."
+      }
+      className={`relative flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium transition-colors cursor-pointer ${ringClass} ${labelClass}`}
+    >
+      <Icon size={11} className="shrink-0" />
+      <span>Approval:</span>
+      <span className={`font-semibold ${isAuto ? "text-amber-300" : "text-ink"}`}>
+        {isAuto ? "Auto" : "Manual"}
+      </span>
+      <ChevronDown size={10} className="opacity-60" />
+      <select
+        aria-label="Approval mode"
+        value={value}
+        onChange={(event) => onChange(event.target.value as AgentApprovalMode)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        <option value="manual">Manual — ask before risky tools</option>
+        <option value="auto">Auto — auto-approve everything</option>
+      </select>
+    </label>
   );
 }
 

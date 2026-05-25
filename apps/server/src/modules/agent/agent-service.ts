@@ -292,11 +292,26 @@ async function requestToolApproval(
   sessionId: string,
   userId: string,
   projectId: string,
+  approvalMode: "manual" | "auto",
   signal: AbortSignal
 ): Promise<ToolGateDecision | void> {
   if (request.risk !== "high" && request.risk !== "dangerous") return;
   const settings = getPlatformSettings();
   if (!settings.requireApprovalForDangerousTools) return;
+
+  if (approvalMode === "auto") {
+    // The user opted into auto-approval for this session. Audit each one so
+    // there is still a trail, but skip the interactive gate.
+    recordAudit("approval.auto_approved", userId, {
+      sessionId,
+      toolCallId: request.toolCall.id,
+      action: request.toolName,
+      riskLevel: request.risk,
+      projectId,
+      arguments: request.args
+    });
+    return;
+  }
 
   const approvalId = createId("apr");
   const createdAt = nowIso();
@@ -409,6 +424,7 @@ export async function runAgentLoop(sessionId: string, userId: string): Promise<v
         workspace_id: string;
         project_id: string | null;
         status: string;
+        approval_mode: string | null;
         model_provider: string | null;
         model_name: string | null;
       }
@@ -641,7 +657,15 @@ export async function runAgentLoop(sessionId: string, userId: string): Promise<v
       },
       signal: controller.signal,
       onEvent,
-      beforeToolExecute: (request) => requestToolApproval(request, sessionId, userId, projectId, controller.signal)
+      beforeToolExecute: (request) =>
+        requestToolApproval(
+          request,
+          sessionId,
+          userId,
+          projectId,
+          session.approval_mode === "auto" ? "auto" : "manual",
+          controller.signal
+        )
     });
   } catch (error: any) {
     if (!controller.signal.aborted) {

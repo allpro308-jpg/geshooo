@@ -86,6 +86,9 @@ export type Snapshot = {
   parentSnapshotId: string | null;
   createdBySessionId: string | null;
   createdByUserId: string | null;
+  /** Short human-readable label (set by the agent or by hand). May be null. */
+  title: string | null;
+  /** Internal/auto message. Used as a fallback when `title` is not set. */
   message: string;
   kind: SnapshotKind;
   treeSha: string;
@@ -608,6 +611,8 @@ export type AgentMessage = {
   createdAt: string;
 };
 
+export type AgentApprovalMode = "manual" | "auto";
+
 export type AgentSession = {
   id: string;
   workspaceId: string;
@@ -615,6 +620,11 @@ export type AgentSession = {
   userId: string;
   status: AgentSessionStatus;
   title: string | null;
+  /**
+   * Whether risky tool calls in this session require manual approval (default)
+   * or are auto-approved. Per-session — flips on every send.
+   */
+  approvalMode: AgentApprovalMode;
   modelProvider: string | null;
   modelName: string | null;
   createdAt: string;

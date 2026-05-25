@@ -25,11 +25,17 @@ function mapSession(s: any) {
     userId: s.user_id,
     status: s.status,
     title: s.title,
+    approvalMode: s.approval_mode === "auto" ? "auto" : "manual",
     modelProvider: s.model_provider,
     modelName: s.model_name,
     createdAt: s.created_at,
     updatedAt: s.updated_at
   };
+}
+
+function normalizeApprovalMode(value: unknown): "manual" | "auto" | null {
+  if (value === "manual" || value === "auto") return value;
+  return null;
 }
 
 agentRouter.use(requireAuth);
@@ -74,7 +80,7 @@ agentRouter.get("/sessions", (req, res, next) => {
 // Create a new session
 agentRouter.post("/sessions", (req, res, next) => {
   try {
-    const { workspaceId, projectId, modelProvider, modelName } = req.body;
+    const { workspaceId, projectId, modelProvider, modelName, approvalMode } = req.body;
 
     if (!workspaceId) {
       res.status(400).json({ error: "workspaceId is required." });
@@ -82,14 +88,16 @@ agentRouter.post("/sessions", (req, res, next) => {
     }
 
     const id = createId("ses");
+    const mode = normalizeApprovalMode(approvalMode) ?? "manual";
     db.prepare(
-      `INSERT INTO agent_sessions (id, workspace_id, project_id, user_id, status, model_provider, model_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'idle', ?, ?, ?, ?)`
+      `INSERT INTO agent_sessions (id, workspace_id, project_id, user_id, status, approval_mode, model_provider, model_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'idle', ?, ?, ?, ?, ?)`
     ).run(
       id,
       workspaceId,
       projectId || null,
       req.user!.id,
+      mode,
       modelProvider || null,
       modelName || null,
       nowIso(),
@@ -103,12 +111,13 @@ agentRouter.post("/sessions", (req, res, next) => {
       user_id: req.user!.id,
       status: "idle",
       title: null,
+      approval_mode: mode,
       model_provider: modelProvider || null,
       model_name: modelName || null,
       created_at: nowIso(),
       updated_at: nowIso()
     };
-    
+
     res.status(201).json({ session: mapSession(mockSess) });
   } catch (err) {
     next(err);
@@ -161,8 +170,8 @@ agentRouter.patch("/sessions/:id", (req, res, next) => {
   try {
     const sessionId = req.params.id;
     ensureSessionAccess(sessionId, req.user!.id);
-    const { title } = req.body;
-    
+    const { title, approvalMode } = req.body;
+
     if (title !== undefined) {
       db.prepare("UPDATE agent_sessions SET title = ?, updated_at = ? WHERE id = ?").run(
         title.trim() === "" ? null : title.trim(),
@@ -170,10 +179,20 @@ agentRouter.patch("/sessions/:id", (req, res, next) => {
         sessionId
       );
     }
-    
+
+    if (approvalMode !== undefined) {
+      const mode = normalizeApprovalMode(approvalMode);
+      if (!mode) throw new HttpError(400, "invalid_approval_mode", "approvalMode must be 'manual' or 'auto'.");
+      db.prepare("UPDATE agent_sessions SET approval_mode = ?, updated_at = ? WHERE id = ?").run(
+        mode,
+        nowIso(),
+        sessionId
+      );
+    }
+
     const session = db.prepare("SELECT * FROM agent_sessions WHERE id = ?").get(sessionId);
     if (!session) throw new HttpError(404, "session_not_found", "Session not found.");
-    
+
     res.json({ session: mapSession(session) });
   } catch (err) {
     next(err);
@@ -200,7 +219,7 @@ agentRouter.post("/sessions/:id/messages", (req, res, next) => {
   try {
     const sessionId = req.params.id;
     ensureSessionAccess(sessionId, req.user!.id);
-    const { content, modelProvider, modelName, tempId } = req.body;
+    const { content, modelProvider, modelName, tempId, approvalMode } = req.body;
 
     if (!content) {
       res.status(400).json({ error: "content is required." });
@@ -212,6 +231,17 @@ agentRouter.post("/sessions/:id/messages", (req, res, next) => {
       db.prepare("UPDATE agent_sessions SET model_provider = ?, model_name = ?, updated_at = ? WHERE id = ?").run(
         modelProvider,
         modelName,
+        nowIso(),
+        sessionId
+      );
+    }
+
+    // Apply the current approval mode before kicking off the loop so the
+    // background runner reads the user's latest preference.
+    const mode = normalizeApprovalMode(approvalMode);
+    if (mode) {
+      db.prepare("UPDATE agent_sessions SET approval_mode = ?, updated_at = ? WHERE id = ?").run(
+        mode,
         nowIso(),
         sessionId
       );

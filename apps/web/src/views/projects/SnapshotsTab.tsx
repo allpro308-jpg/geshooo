@@ -15,6 +15,8 @@ import {
   FileDiff,
   History,
   Loader2,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RotateCcw,
   ShieldCheck,
@@ -85,6 +87,8 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
   const [busy, setBusy] = useState(false);
   const [showUnchanged, setShowUnchanged] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [snapshotsPanelOpen, setSnapshotsPanelOpen] = useState(true);
+  const [filesPanelOpen, setFilesPanelOpen] = useState(true);
   const diffEditorRef = useRef<Monaco.editor.IStandaloneDiffEditor | null>(null);
 
   const loadSnapshots = useCallback(
@@ -357,55 +361,80 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
   const visibleEntries = showUnchanged ? diff?.entries ?? [] : changedEntries;
   const summary = useMemo(() => summarizeDiff(diff), [diff]);
 
+  const targetTitle = target ? snapshotDisplayTitle(target) : "";
+  const targetSubtitle = target ? snapshotSubtitle(target) : "";
+
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden bg-surface">
       {/* Snapshot list */}
-      <aside className="flex w-72 shrink-0 flex-col border-r border-hairline bg-bg/50">
-        <div className="flex h-9 shrink-0 items-center justify-between border-b border-hairline px-3">
-          <div className="text-[11px] uppercase tracking-tighter2 text-dim">Snapshots</div>
-          <button
-            type="button"
-            onClick={handleCreateSnapshot}
-            disabled={busy}
-            title="Create snapshot"
-            className="focus-ring grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-50"
-          >
-            <Plus size={13} />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {!snapshots ? (
-            <div className="grid h-full place-items-center py-10 text-muted">
-              <Loader2 size={18} className="animate-spin" />
+      {snapshotsPanelOpen ? (
+        <aside className="flex w-56 shrink-0 flex-col border-r border-hairline bg-bg/50 md:w-64 xl:w-72">
+          <div className="flex h-9 shrink-0 items-center justify-between border-b border-hairline px-3">
+            <div className="text-[11px] uppercase tracking-tighter2 text-dim">Snapshots</div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleCreateSnapshot}
+                disabled={busy}
+                title="Create snapshot"
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-50"
+              >
+                <Plus size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSnapshotsPanelOpen(false)}
+                title="Hide snapshots panel"
+                className="focus-ring grid h-6 w-6 place-items-center rounded-md text-dim transition-colors hover:bg-elevated hover:text-ink"
+              >
+                <PanelLeftClose size={13} />
+              </button>
             </div>
-          ) : snapshots.length === 0 ? (
-            <EmptyHint
-              icon={<Camera size={18} className="text-dim" />}
-              title="No snapshots yet"
-              hint="Snapshots are taken before every AI write, or you can create one manually."
-            />
-          ) : (
-            <ul className="divide-y divide-hairline">
-              {snapshots.map((snapshot) => (
-                <SnapshotRow
-                  key={snapshot.id}
-                  snapshot={snapshot}
-                  active={snapshot.id === targetId}
-                  baseHint={snapshot.id === baseId ? "base" : null}
-                  onSelect={() => selectTarget(snapshot.id)}
-                  onSelectAsBase={() => selectBase(snapshot.id)}
-                />
-              ))}
-            </ul>
-          )}
-        </div>
-      </aside>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {!snapshots ? (
+              <div className="grid h-full place-items-center py-10 text-muted">
+                <Loader2 size={18} className="animate-spin" />
+              </div>
+            ) : snapshots.length === 0 ? (
+              <EmptyHint
+                icon={<Camera size={18} className="text-dim" />}
+                title="No snapshots yet"
+                hint="Snapshots are taken before every AI write, or you can create one manually."
+              />
+            ) : (
+              <ul className="divide-y divide-hairline">
+                {snapshots.map((snapshot) => (
+                  <SnapshotRow
+                    key={snapshot.id}
+                    snapshot={snapshot}
+                    active={snapshot.id === targetId}
+                    baseHint={snapshot.id === baseId ? "base" : null}
+                    onSelect={() => selectTarget(snapshot.id)}
+                    onSelectAsBase={() => selectBase(snapshot.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        </aside>
+      ) : null}
 
       {/* Diff panel */}
       <section className="flex min-w-0 flex-1 flex-col">
         {/* Toolbar */}
-        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-hairline bg-bg/50 px-3 text-xs text-muted">
-          <div className="flex items-center gap-1">
+        <div className="flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-hairline bg-bg/50 px-2 py-1 text-xs text-muted">
+          {!snapshotsPanelOpen ? (
+            <button
+              type="button"
+              onClick={() => setSnapshotsPanelOpen(true)}
+              title="Show snapshots panel"
+              className="focus-ring grid h-7 w-7 place-items-center rounded-md text-dim transition-colors hover:bg-elevated hover:text-ink"
+            >
+              <PanelLeftOpen size={13} />
+            </button>
+          ) : null}
+          <div className="flex items-center gap-0.5">
             <button
               type="button"
               onClick={() => prevId && selectTarget(prevId)}
@@ -428,28 +457,32 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
 
           {target ? (
             <>
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-ink">{target.message}</span>
-                <span className="text-dim">·</span>
-                <span className="font-mono text-[10px] text-dim">{target.id.slice(0, 8)}</span>
-                <span className="text-dim">·</span>
-                <span className="text-dim">{formatRelative(target.createdAt)}</span>
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <KindBadge kind={target.kind} compact />
+                <span className="min-w-0 truncate text-ink" title={targetTitle}>
+                  {targetTitle}
+                </span>
+                <span className="hidden text-dim md:inline">·</span>
+                <span className="hidden truncate text-[11px] text-dim md:inline">
+                  {targetSubtitle}
+                </span>
               </div>
 
-              <div className="ml-auto flex items-center gap-2">
-                <label className="flex items-center gap-2 text-[11px] text-dim">
-                  Compare with
+              <div className="flex items-center gap-2">
+                <label className="hidden items-center gap-2 text-[11px] text-dim md:flex">
+                  <span className="hidden lg:inline">Compare with</span>
+                  <span className="lg:hidden">Base</span>
                   <select
                     value={baseId ?? ""}
                     onChange={(event) => selectBase(event.target.value || null)}
-                    className="focus-ring h-7 rounded-md border border-line bg-elevated px-2 text-xs text-ink"
+                    className="focus-ring h-7 max-w-[14rem] rounded-md border border-line bg-elevated px-2 text-xs text-ink"
                   >
                     <option value="">Empty (initial state)</option>
                     {snapshots
                       ?.filter((snap) => snap.id !== target.id)
                       .map((snap) => (
                         <option key={snap.id} value={snap.id}>
-                          {`${snap.id.slice(0, 8)} · ${snap.message.slice(0, 40)}`}
+                          {`${snap.id.slice(0, 6)} · ${snapshotDisplayTitle(snap).slice(0, 40)}`}
                         </option>
                       ))}
                   </select>
@@ -461,7 +494,8 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
                   onClick={handleRestoreSnapshot}
                   disabled={busy}
                 >
-                  Restore snapshot
+                  <span className="hidden sm:inline">Restore snapshot</span>
+                  <span className="sm:hidden">Restore</span>
                 </Button>
               </div>
             </>
@@ -494,79 +528,104 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
         ) : (
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* File list */}
-            <div className="flex w-72 shrink-0 flex-col border-r border-hairline bg-bg/30">
-              <div className="flex h-9 shrink-0 items-center justify-between border-b border-hairline px-3 text-[11px] uppercase tracking-tighter2 text-dim">
-                <span>Files</span>
-                <label className="flex items-center gap-1.5 text-[10px] normal-case tracking-normal text-dim">
-                  <input
-                    type="checkbox"
-                    checked={showUnchanged}
-                    onChange={(event) => setShowUnchanged(event.target.checked)}
-                  />
-                  Show unchanged
-                </label>
-              </div>
-              <div className="border-b border-hairline px-3 py-2 text-[11px] text-dim">
-                <DiffSummaryStrip summary={summary} />
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {diffLoading ? (
-                  <div className="grid h-full place-items-center py-10 text-muted">
-                    <Loader2 size={18} className="animate-spin" />
-                  </div>
-                ) : visibleEntries.length === 0 ? (
-                  <EmptyHint
-                    icon={<FileDiff size={18} className="text-dim" />}
-                    title="No changes"
-                    hint={
-                      diff && diff.entries.length > 0
-                        ? "No differences between these snapshots. Toggle 'show unchanged' to browse all files."
-                        : "This snapshot is empty."
-                    }
-                  />
-                ) : (
-                  <ul className="divide-y divide-hairline">
-                    {visibleEntries.map((entry) => (
-                      <FileRow
-                        key={entry.path}
-                        entry={entry}
-                        active={entry.path === selectedPath}
-                        onSelect={() => setSelectedPath(entry.path)}
+            {filesPanelOpen ? (
+              <div className="flex w-56 shrink-0 flex-col border-r border-hairline bg-bg/30 md:w-64 xl:w-72">
+                <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-hairline px-3 text-[11px] uppercase tracking-tighter2 text-dim">
+                  <span>Files</span>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-[10px] normal-case tracking-normal text-dim">
+                      <input
+                        type="checkbox"
+                        checked={showUnchanged}
+                        onChange={(event) => setShowUnchanged(event.target.checked)}
                       />
-                    ))}
-                  </ul>
-                )}
+                      <span className="hidden md:inline">Show unchanged</span>
+                      <span className="md:hidden">All</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setFilesPanelOpen(false)}
+                      title="Hide files panel"
+                      className="focus-ring grid h-6 w-6 place-items-center rounded-md text-dim transition-colors hover:bg-elevated hover:text-ink"
+                    >
+                      <PanelLeftClose size={13} />
+                    </button>
+                  </div>
+                </div>
+                <div className="border-b border-hairline px-3 py-2 text-[11px] text-dim">
+                  <DiffSummaryStrip summary={summary} />
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {diffLoading ? (
+                    <div className="grid h-full place-items-center py-10 text-muted">
+                      <Loader2 size={18} className="animate-spin" />
+                    </div>
+                  ) : visibleEntries.length === 0 ? (
+                    <EmptyHint
+                      icon={<FileDiff size={18} className="text-dim" />}
+                      title="No changes"
+                      hint={
+                        diff && diff.entries.length > 0
+                          ? "No differences between these snapshots. Toggle 'show unchanged' to browse all files."
+                          : "This snapshot is empty."
+                      }
+                    />
+                  ) : (
+                    <ul className="divide-y divide-hairline">
+                      {visibleEntries.map((entry) => (
+                        <FileRow
+                          key={entry.path}
+                          entry={entry}
+                          active={entry.path === selectedPath}
+                          onSelect={() => setSelectedPath(entry.path)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Diff viewer */}
             <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex h-9 shrink-0 items-center gap-2 border-b border-hairline bg-bg/50 px-3 text-xs">
+              <div className="flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-hairline bg-bg/50 px-2 py-1 text-xs">
+                {!filesPanelOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setFilesPanelOpen(true)}
+                    title="Show files panel"
+                    className="focus-ring grid h-7 w-7 place-items-center rounded-md text-dim transition-colors hover:bg-elevated hover:text-ink"
+                  >
+                    <PanelLeftOpen size={13} />
+                  </button>
+                ) : null}
                 {selectedEntry ? (
                   <>
                     <StatusBadge status={selectedEntry.status} />
-                    <span className="truncate font-mono text-[11px] text-ink">
+                    <span
+                      className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink"
+                      title={selectedEntry.path}
+                    >
                       {selectedEntry.path}
                     </span>
-                    <span className="text-dim">
+                    <span className="hidden text-dim sm:inline">
                       {formatSizeDelta(selectedEntry)}
                     </span>
-                    <div className="ml-auto">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        icon={<RotateCcw size={12} />}
-                        onClick={handleRestoreFile}
-                        disabled={busy || selectedEntry.status === "removed"}
-                        title={
-                          selectedEntry.status === "removed"
-                            ? "File was deleted in this snapshot — restore the whole snapshot to remove it from the working tree."
-                            : "Write this file from the target snapshot into the working tree."
-                        }
-                      >
-                        Restore file
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<RotateCcw size={12} />}
+                      onClick={handleRestoreFile}
+                      disabled={busy || selectedEntry.status === "removed"}
+                      title={
+                        selectedEntry.status === "removed"
+                          ? "File was deleted in this snapshot — restore the whole snapshot to remove it from the working tree."
+                          : "Write this file from the target snapshot into the working tree."
+                      }
+                    >
+                      <span className="hidden sm:inline">Restore file</span>
+                      <span className="sm:hidden">File</span>
+                    </Button>
                   </>
                 ) : (
                   <span className="text-dim">Select a file to view the diff</span>
@@ -658,9 +717,17 @@ function SnapshotRow({
             {snapshot.id.slice(0, 8)}
           </span>
         </div>
-        <div className={`truncate text-xs ${active ? "text-ink" : "text-muted"}`}>
-          {snapshot.message}
+        <div
+          className={`truncate text-xs ${active ? "text-ink" : "text-muted"}`}
+          title={snapshotDisplayTitle(snapshot)}
+        >
+          {snapshotDisplayTitle(snapshot)}
         </div>
+        {snapshot.title && snapshot.message && snapshot.message !== snapshot.title ? (
+          <div className="truncate text-[10px] text-dim" title={snapshot.message}>
+            {snapshot.message}
+          </div>
+        ) : null}
         <div className="flex items-center justify-between text-[10px] text-dim">
           <span>{formatRelative(snapshot.createdAt)}</span>
           <span>
@@ -726,11 +793,14 @@ function StatusDot({ status }: { status: SnapshotDiffEntry["status"] }) {
   return <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${color}`} />;
 }
 
-function KindBadge({ kind }: { kind: SnapshotKind }) {
+function KindBadge({ kind, compact = false }: { kind: SnapshotKind; compact?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-sm border border-hairline bg-bg px-1.5 py-0.5 text-[9px] uppercase tracking-tighter2 text-dim">
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-hairline bg-bg px-1.5 py-0.5 text-[9px] uppercase tracking-tighter2 text-dim"
+      title={KIND_LABEL[kind]}
+    >
       {KIND_ICON[kind]}
-      {KIND_LABEL[kind]}
+      {compact ? null : KIND_LABEL[kind]}
     </span>
   );
 }
@@ -782,6 +852,26 @@ function EmptyHint({
       <div className="mt-3 text-sm text-ink">{title}</div>
       <div className="mt-1 max-w-xs text-xs text-muted">{hint}</div>
     </div>
+  );
+}
+
+function snapshotDisplayTitle(snapshot: Snapshot): string {
+  const title = snapshot.title?.trim();
+  if (title) return title;
+  const message = snapshot.message?.trim();
+  if (message && !looksAutoGenerated(message)) return message;
+  return `Snapshot ${snapshot.id.slice(0, 8)}`;
+}
+
+function snapshotSubtitle(snapshot: Snapshot): string {
+  return `${snapshot.id.slice(0, 8)} · ${formatRelative(snapshot.createdAt)}`;
+}
+
+function looksAutoGenerated(message: string): boolean {
+  // Suppress the verbose auto-snapshot fallback messages from the title slot.
+  return (
+    message.startsWith("Auto-snapshot before agent edits") ||
+    message.startsWith("Checkpoint before restoring")
   );
 }
 

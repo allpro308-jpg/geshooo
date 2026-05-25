@@ -1,4 +1,5 @@
 import type {
+  AgentApprovalMode,
   AgentMessage,
   AgentSession,
   AgentStreamEvent,
@@ -17,27 +18,30 @@ type AgentState = {
   messages: AgentMessage[];
   pendingApprovals: ApprovalRequest[];
   providers: ProviderWithModels[];
-  
+
   isLoadingSessions: boolean;
   isLoadingMessages: boolean;
   isLoadingModels: boolean;
   isGenerating: boolean;
-  
+
   chatPanelOpen: boolean;
   chatPanelWidth: number;
-  
+  debugMode: boolean;
+
   selectedProvider: string | null;
   selectedModel: string | null;
-  
+  approvalMode: AgentApprovalMode;
+
   streamingMessageId: string | null;
   streamingContent: string;
   streamingToolCalls: AgentToolCall[];
-  
+
   eventSource: EventSource | null;
-  
+
   // Actions
   toggleChatPanel: (open?: boolean) => void;
   setChatPanelWidth: (width: number) => void;
+  setDebugMode: (enabled: boolean) => void;
   fetchSessions: (projectId: string, workspaceId: string) => Promise<void>;
   createSession: (workspaceId: string, projectId?: string) => Promise<string>;
   selectSession: (sessionId: string) => Promise<void>;
@@ -47,6 +51,7 @@ type AgentState = {
   deleteMessage: (messageId: string) => Promise<void>;
   fetchModels: () => Promise<void>;
   selectModel: (provider: string, model: string) => void;
+  setApprovalMode: (mode: AgentApprovalMode) => Promise<void>;
   clearSession: () => void;
   renameSession: (sessionId: string, title: string) => Promise<void>;
   removeSession: (sessionId: string) => Promise<void>;
@@ -56,6 +61,10 @@ export const useAgentStore = create<AgentState>((set, get) => {
   // Load saved layouts
   const savedWidth = localStorage.getItem("singulary_chat_width");
   const savedOpen = localStorage.getItem("singulary_chat_open");
+  const savedApprovalMode = localStorage.getItem("singulary_approval_mode");
+  const savedDebugMode = localStorage.getItem("singulary_chat_debug");
+  const initialApprovalMode: AgentApprovalMode =
+    savedApprovalMode === "auto" ? "auto" : "manual";
 
   return {
     sessions: [],
@@ -64,22 +73,24 @@ export const useAgentStore = create<AgentState>((set, get) => {
     messages: [],
     pendingApprovals: [],
     providers: [],
-    
+
     isLoadingSessions: true,
     isLoadingMessages: false,
     isLoadingModels: false,
     isGenerating: false,
-    
+
     chatPanelOpen: savedOpen !== null ? savedOpen === "true" : true,
     chatPanelWidth: savedWidth ? Number(savedWidth) : 380,
-    
+    debugMode: savedDebugMode === "true",
+
     selectedProvider: null,
     selectedModel: null,
-    
+    approvalMode: initialApprovalMode,
+
     streamingMessageId: null,
     streamingContent: "",
     streamingToolCalls: [],
-    
+
     eventSource: null,
 
     toggleChatPanel: (open) => {
@@ -92,6 +103,11 @@ export const useAgentStore = create<AgentState>((set, get) => {
       const nextWidth = Math.max(280, Math.min(600, width));
       localStorage.setItem("singulary_chat_width", String(nextWidth));
       set({ chatPanelWidth: nextWidth });
+    },
+
+    setDebugMode: (enabled) => {
+      localStorage.setItem("singulary_chat_debug", String(enabled));
+      set({ debugMode: enabled });
     },
 
     fetchSessions: async (projectId, workspaceId) => {
@@ -120,19 +136,21 @@ export const useAgentStore = create<AgentState>((set, get) => {
 
     createSession: async (workspaceId, projectId) => {
       set({ isGenerating: false });
-      const { selectedProvider, selectedModel } = get();
-      
+      const { selectedProvider, selectedModel, approvalMode } = get();
+
       const { session } = await agentService.createSession({
         workspaceId,
         projectId,
         modelProvider: selectedProvider || undefined,
-        modelName: selectedModel || undefined
+        modelName: selectedModel || undefined,
+        approvalMode
       });
 
       set((state) => ({
         sessions: [session, ...state.sessions],
         activeSessionId: session.id,
         activeSession: session,
+        approvalMode: session.approvalMode ?? approvalMode,
         messages: []
       }));
 
@@ -169,7 +187,8 @@ export const useAgentStore = create<AgentState>((set, get) => {
           messages,
           pendingApprovals: approvals,
           selectedProvider: session?.modelProvider || get().selectedProvider,
-          selectedModel: session?.modelName || get().selectedModel
+          selectedModel: session?.modelName || get().selectedModel,
+          approvalMode: session?.approvalMode ?? get().approvalMode
         });
       } catch (err) {
         console.error("Failed to load session messages", err);
@@ -179,7 +198,7 @@ export const useAgentStore = create<AgentState>((set, get) => {
     },
 
     sendMessage: async (content) => {
-      const { activeSessionId, selectedProvider, selectedModel, isGenerating } = get();
+      const { activeSessionId, selectedProvider, selectedModel, approvalMode, isGenerating } = get();
       if (!activeSessionId || isGenerating) return;
 
       // Close prior event source
@@ -229,7 +248,8 @@ export const useAgentStore = create<AgentState>((set, get) => {
           content,
           tempId,
           modelProvider: selectedProvider || undefined,
-          modelName: selectedModel || undefined
+          modelName: selectedModel || undefined,
+          approvalMode
         });
 
         es.onmessage = (event) => {
@@ -237,10 +257,33 @@ export const useAgentStore = create<AgentState>((set, get) => {
             const data = JSON.parse(event.data) as AgentStreamEvent;
             
             if (data.type === "message_start") {
-              set({
-                streamingMessageId: data.messageId,
-                streamingContent: "",
-                streamingToolCalls: []
+              // A new iteration is starting. Commit the prior iteration's
+              // streaming buffer to `messages` so its text + tool calls are
+              // not wiped — otherwise multi-iteration turns "eat" earlier
+              // assistant text the moment the next iteration begins.
+              set((state) => {
+                const next: AgentMessage[] = [...state.messages];
+                if (
+                  state.streamingMessageId &&
+                  (state.streamingContent.length > 0 || state.streamingToolCalls.length > 0)
+                ) {
+                  next.push({
+                    id: state.streamingMessageId,
+                    sessionId: activeSessionId,
+                    role: "assistant",
+                    content: state.streamingContent || null,
+                    toolCallId: null,
+                    toolCalls:
+                      state.streamingToolCalls.length > 0 ? [...state.streamingToolCalls] : null,
+                    createdAt: new Date().toISOString()
+                  });
+                }
+                return {
+                  messages: next,
+                  streamingMessageId: data.messageId,
+                  streamingContent: "",
+                  streamingToolCalls: []
+                };
               });
             } else if (data.type === "content_delta") {
               set((state) => ({
@@ -436,6 +479,36 @@ export const useAgentStore = create<AgentState>((set, get) => {
         console.error("Failed to load models list", err);
       } finally {
         set({ isLoadingModels: false });
+      }
+    },
+
+    setApprovalMode: async (mode) => {
+      // Optimistic update + persist locally so the choice survives reloads.
+      localStorage.setItem("singulary_approval_mode", mode);
+      set((state) => ({
+        approvalMode: mode,
+        activeSession: state.activeSession ? { ...state.activeSession, approvalMode: mode } : null,
+        sessions: state.activeSessionId
+          ? state.sessions.map((s) =>
+              s.id === state.activeSessionId ? { ...s, approvalMode: mode } : s
+            )
+          : state.sessions
+      }));
+
+      // If a session is active, push the change to the server so the next loop
+      // iteration sees it even before the user sends a new message.
+      const { activeSessionId } = get();
+      if (!activeSessionId) return;
+      try {
+        const { session } = await agentService.updateSession(activeSessionId, {
+          approvalMode: mode
+        });
+        set((state) => ({
+          activeSession: state.activeSessionId === activeSessionId ? session : state.activeSession,
+          sessions: state.sessions.map((s) => (s.id === activeSessionId ? session : s))
+        }));
+      } catch (err) {
+        console.error("Failed to update approval mode", err);
       }
     },
 

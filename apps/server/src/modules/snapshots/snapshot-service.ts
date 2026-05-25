@@ -28,6 +28,7 @@ type SnapshotRow = {
   parent_snapshot_id: string | null;
   created_by_session_id: string | null;
   created_by_user_id: string | null;
+  title: string | null;
   message: string;
   kind: SnapshotKind;
   tree_sha: string | null;
@@ -44,6 +45,7 @@ function mapSnapshot(row: SnapshotRow): Snapshot {
     parentSnapshotId: row.parent_snapshot_id,
     createdBySessionId: row.created_by_session_id,
     createdByUserId: row.created_by_user_id,
+    title: row.title,
     message: row.message,
     kind: row.kind,
     treeSha: row.tree_sha ?? "",
@@ -56,6 +58,8 @@ function mapSnapshot(row: SnapshotRow): Snapshot {
 export interface CreateSnapshotInput {
   projectId: string;
   message: string;
+  /** Optional short human-readable label shown in the UI. */
+  title?: string | null;
   kind?: SnapshotKind;
   userId: string | null;
   sessionId?: string | null;
@@ -81,6 +85,11 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<Snapsh
   if (lastSnapshot && lastSnapshot.tree_sha === tree.treeSha && input.kind !== "manual") {
     // No changes since the previous snapshot — return that one instead of churning.
     const row = db.prepare("SELECT * FROM snapshots WHERE id = ?").get(lastSnapshot.id) as SnapshotRow;
+    // If we have a title and the existing snapshot has none, attach it.
+    if (input.title && !row.title) {
+      db.prepare("UPDATE snapshots SET title = ? WHERE id = ?").run(input.title, row.id);
+      row.title = input.title;
+    }
     return mapSnapshot(row);
   }
 
@@ -89,8 +98,8 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<Snapsh
   db.prepare(
     `INSERT INTO snapshots (
        id, workspace_id, project_id, parent_snapshot_id, created_by_session_id,
-       created_by_user_id, message, kind, tree_sha, file_count, total_bytes, created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       created_by_user_id, title, message, kind, tree_sha, file_count, total_bytes, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     projectRow.workspace_id,
@@ -98,6 +107,7 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<Snapsh
     lastSnapshot?.id ?? null,
     input.sessionId ?? null,
     input.userId,
+    input.title ?? null,
     input.message,
     input.kind ?? "manual",
     tree.treeSha,
@@ -108,6 +118,14 @@ export async function createSnapshot(input: CreateSnapshotInput): Promise<Snapsh
 
   const row = db.prepare("SELECT * FROM snapshots WHERE id = ?").get(id) as SnapshotRow;
   return mapSnapshot(row);
+}
+
+export function updateSnapshotTitle(snapshotId: string, title: string): Snapshot | null {
+  db.prepare("UPDATE snapshots SET title = ? WHERE id = ?").run(title, snapshotId);
+  const row = db.prepare("SELECT * FROM snapshots WHERE id = ?").get(snapshotId) as
+    | SnapshotRow
+    | undefined;
+  return row ? mapSnapshot(row) : null;
 }
 
 export function listSnapshots(projectId: string, limit = 100): Snapshot[] {
@@ -261,34 +279,75 @@ function resolveJoined(root: string, rel: string): string {
 // --- agent helpers -------------------------------------------------------
 
 /**
- * Make sure there is a fresh "before AI write" snapshot for this session.
- * Returns the snapshot if one was created (or already exists for this session).
+ * Per-turn snapshot state for an agent session. Tracks:
+ * - whether a pre-write snapshot was already taken this turn, and
+ * - the pending human-readable title the agent set for this turn (so the next
+ *   pre-write snapshot gets it).
+ *
+ * Reset at the start of every agent turn by `resetAgentSessionSnapshotState`.
  */
-const sessionPreSnapshotSeen = new Set<string>();
+type SessionSnapshotState = {
+  snapshotId: string | null;
+  pendingTitle: string | null;
+};
 
+const sessionSnapshotState = new Map<string, SessionSnapshotState>();
+
+function getState(sessionId: string): SessionSnapshotState {
+  let state = sessionSnapshotState.get(sessionId);
+  if (!state) {
+    state = { snapshotId: null, pendingTitle: null };
+    sessionSnapshotState.set(sessionId, state);
+  }
+  return state;
+}
+
+/**
+ * Record the title the agent wants on the current turn's snapshot. If a
+ * pre-write snapshot already exists for this turn, update it in place.
+ * Returns whether the title was applied to an existing snapshot or stashed
+ * for the next one.
+ */
+export function setSessionChangeTitle(
+  sessionId: string,
+  title: string
+): { applied: "updated" | "stashed"; snapshotId: string | null } {
+  const state = getState(sessionId);
+  state.pendingTitle = title;
+  if (state.snapshotId) {
+    updateSnapshotTitle(state.snapshotId, title);
+    return { applied: "updated", snapshotId: state.snapshotId };
+  }
+  return { applied: "stashed", snapshotId: null };
+}
+
+/**
+ * Make sure there is a fresh "before AI write" snapshot for this turn.
+ * Returns the snapshot if one was created (or already exists for this turn).
+ */
 export async function ensureAgentPreWriteSnapshot(
   projectId: string,
   sessionId: string,
   userId: string | null
 ): Promise<Snapshot | null> {
-  const key = `${sessionId}:${projectId}`;
-  if (sessionPreSnapshotSeen.has(key)) return null;
-  sessionPreSnapshotSeen.add(key);
+  const state = getState(sessionId);
+  if (state.snapshotId) return null;
   try {
-    return await createSnapshot({
+    const snapshot = await createSnapshot({
       projectId,
       message: `Auto-snapshot before agent edits (session ${sessionId})`,
+      title: state.pendingTitle,
       kind: "agent_pre_write",
       userId,
       sessionId
     });
+    state.snapshotId = snapshot.id;
+    return snapshot;
   } catch {
     return null;
   }
 }
 
 export function resetAgentSessionSnapshotState(sessionId: string): void {
-  for (const key of sessionPreSnapshotSeen) {
-    if (key.startsWith(`${sessionId}:`)) sessionPreSnapshotSeen.delete(key);
-  }
+  sessionSnapshotState.delete(sessionId);
 }

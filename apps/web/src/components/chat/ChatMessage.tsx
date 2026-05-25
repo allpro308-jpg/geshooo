@@ -1,15 +1,61 @@
 import type { AgentMessage, AgentToolCall } from "@singulary/shared";
-import { Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, Database, FileCode, RotateCw,Settings, Terminal, Trash2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { Check, CheckCircle2, ChevronDown, ChevronUp, Clipboard, Database, FileCode, RotateCw, Settings, Terminal, Trash2, XCircle } from "lucide-react";
+import React, { useCallback, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type ChatMessageProps = {
   message: AgentMessage | { role: "assistant"; content: string; toolCalls?: null | any[] };
   isStreaming?: boolean;
+  isConsecutive?: boolean;
+  debug?: boolean;
 };
 
 import { useAgentStore } from "@/stores/agent.store";
 
-export function ChatMessage({ message, isStreaming = false, isConsecutive = false }: ChatMessageProps & { isConsecutive?: boolean }) {
+/**
+ * Tool calls that are noisy / not interesting to the end user. Hidden unless
+ * debug mode is on OR the call is still gated on an approval (in which case
+ * the user needs to see it to act on it).
+ */
+const NOISY_TOOL_NAMES = new Set([
+  "set_change_title",
+  "read_file",
+  "list_files",
+  "find",
+  "shell_read",
+  "shell_wait",
+  "shell_kill",
+  "list_snapshots",
+  "logs_read"
+]);
+
+export function shouldShowToolCall(tc: AgentToolCall, debug: boolean): boolean {
+  if (debug) return true;
+  if (tc.status === "pending") return true;
+  return !NOISY_TOOL_NAMES.has(tc.toolName);
+}
+
+/**
+ * Whether a message will produce any visible content. Used by ChatPanel to
+ * drop empty bubbles before computing consecutive-sender grouping.
+ */
+export function messageHasVisibleContent(
+  msg: { role: string; content?: string | null; toolCalls?: AgentToolCall[] | null },
+  debug: boolean
+): boolean {
+  if (msg.role === "tool") return false;
+  if (msg.role === "user") return true;
+  if (msg.content && msg.content.trim().length > 0) return true;
+  return (msg.toolCalls ?? []).some((tc) => shouldShowToolCall(tc, debug));
+}
+
+export function ChatMessage({
+  message,
+  isStreaming = false,
+  isConsecutive = false,
+  debug = false
+}: ChatMessageProps) {
   const isUser = message.role === "user";
   const isTool = message.role === "tool";
   const messageId = "id" in message ? message.id : null;
@@ -21,9 +67,16 @@ export function ChatMessage({ message, isStreaming = false, isConsecutive = fals
     return null;
   }
 
-  const visibleToolCalls = message.toolCalls?.filter(
-    tc => !["read_file", "list_files", "find", "shell_read"].includes(tc.toolName)
-  ) || [];
+  const visibleToolCalls = (message.toolCalls ?? []).filter((tc) =>
+    shouldShowToolCall(tc, debug)
+  );
+
+  // Skip empty bubbles entirely (e.g. assistant messages whose only tool call
+  // was set_change_title and that have no text). The bottom thinking
+  // indicator in ChatPanel covers "still working" states.
+  if (!isUser && !message.content && visibleToolCalls.length === 0 && !isStreaming) {
+    return null;
+  }
 
   return (
     <div className={`group flex w-full flex-col gap-1.5 ${isUser ? "items-end" : "items-start"} ${isConsecutive ? "pt-0 pb-1" : "py-3"}`}>
@@ -56,21 +109,11 @@ export function ChatMessage({ message, isStreaming = false, isConsecutive = fals
         }`}
       >
         {/* Text Content */}
-        {(message.content || isStreaming || (visibleToolCalls.length === 0 && !message.toolCalls?.length)) && (
+        {message.content ? (
           <div className="px-4 py-3 prose prose-sm dark:prose-invert max-w-none text-[13.5px] leading-relaxed break-words">
-            {message.content ? (
-              <FormattedText text={message.content} />
-            ) : isStreaming ? (
-              <span className="flex items-center gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500" style={{ animationDelay: "0ms" }} />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500" style={{ animationDelay: "150ms" }} />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-500" style={{ animationDelay: "300ms" }} />
-              </span>
-            ) : (
-              <span className="italic text-dim">No content</span>
-            )}
+            <FormattedText text={message.content} />
           </div>
-        )}
+        ) : null}
 
         {/* Render tool calls inside the same bubble */}
         {visibleToolCalls.length > 0 && (
@@ -238,71 +281,130 @@ function ToolMessageContent({ content, toolCallId }: { content: string | null; t
   );
 }
 
-// Basic formatted text renderer that creates beautiful inline code and blocks
-function FormattedText({ text }: { text: string }) {
+// Inline color swatch for #RRGGBB / #RGB hex tokens
+function ColorSwatch({ hex }: { hex: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(hex);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [hex]);
+  return (
+    <button
+      onClick={copy}
+      title={copied ? "Copied!" : `Copy ${hex}`}
+      className="inline-flex items-center gap-1 mx-0.5 align-middle rounded border border-hairline bg-elevated px-1 py-0.5 font-mono text-[11px] text-ink hover:border-accent transition-colors outline-none"
+    >
+      <span
+        className="inline-block h-3 w-3 rounded-sm border border-black/10 shrink-0"
+        style={{ backgroundColor: hex }}
+      />
+      {copied ? <span className="text-emerald-500">Copied!</span> : hex}
+    </button>
+  );
+}
+
+// Replace #hex tokens in a text node with ColorSwatch elements
+const HEX_SPLIT_RE = /(#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b)/g;
+const HEX_TEST_RE = /^#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/;
+
+function renderWithColors(text: string): React.ReactNode {
+  const parts = text.split(HEX_SPLIT_RE);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    HEX_TEST_RE.test(part) ? <ColorSwatch key={i} hex={part} /> : part
+  );
+}
+
+// Code block with copy button — used as react-markdown's `pre` override
+function CodeBlock({ children }: { children?: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
 
-  const parts = text.split(/(```[\s\S]*?```)/g);
+  // Extract raw text and language from the nested <code> child
+  let lang = "";
+  let code = "";
+  if (children && typeof children === "object" && "props" in (children as any)) {
+    const child = children as React.ReactElement<{ className?: string; children?: string }>;
+    lang = (child.props.className ?? "").replace("language-", "");
+    code = String(child.props.children ?? "").replace(/\n$/, "");
+  }
 
-  const copyToClipboard = (code: string) => {
+  const copy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      {parts.map((part, index) => {
-        if (part.startsWith("```")) {
-          const match = part.match(/```(\w*)\n([\s\S]*?)```/);
-          const lang = match ? match[1] : "";
-          const code = match ? match[2] : part.slice(3, -3);
-
-          return (
-            <div key={index} className="my-1.5 overflow-hidden rounded-lg border border-hairline bg-elevated shadow-xs">
-              <div className="flex items-center justify-between bg-surface px-3 py-1.5 text-[10px] font-mono font-semibold text-muted border-b border-hairline">
-                <span>{lang || "code"}</span>
-                <button
-                  onClick={() => copyToClipboard(code)}
-                  className="flex items-center gap-1 hover:text-ink outline-none"
-                >
-                  {copied ? (
-                    <>
-                      <Check size={11} className="text-emerald-500" />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Clipboard size={11} />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <pre className="overflow-x-auto p-3 text-[12px] font-mono leading-relaxed text-ink bg-surface/50">
-                <code>{code}</code>
-              </pre>
-            </div>
-          );
-        }
-
-        // Inline code rendering
-        const inlineParts = part.split(/(`[^`\n]+`)/g);
-        return (
-          <span key={index} className="whitespace-pre-wrap leading-relaxed">
-            {inlineParts.map((subPart, subIndex) => {
-              if (subPart.startsWith("`") && subPart.endsWith("`")) {
-                return (
-                  <code key={subIndex} className="mx-0.5 rounded bg-elevated px-1 py-0.5 font-mono text-[12px] font-medium text-indigo-500 border border-hairline">
-                    {subPart.slice(1, -1)}
-                  </code>
-                );
-              }
-              return subPart;
-            })}
-          </span>
-        );
-      })}
+    <div className="my-1.5 overflow-hidden rounded-lg border border-hairline bg-elevated shadow-xs">
+      <div className="flex items-center justify-between bg-surface px-3 py-1.5 text-[10px] font-mono font-semibold text-muted border-b border-hairline">
+        <span>{lang || "code"}</span>
+        <button onClick={copy} className="flex items-center gap-1 hover:text-ink outline-none">
+          {copied ? (
+            <><Check size={11} className="text-emerald-500" /><span>Copied!</span></>
+          ) : (
+            <><Clipboard size={11} /><span>Copy</span></>
+          )}
+        </button>
+      </div>
+      <pre className="overflow-x-auto p-3 text-[12px] font-mono leading-relaxed text-ink bg-surface/50">
+        <code>{code}</code>
+      </pre>
     </div>
   );
+}
+
+function FormattedText({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        // Headings
+        h1: ({ children }) => <h1 className="mt-3 mb-1 text-base font-bold text-ink leading-snug">{processChildren(children)}</h1>,
+        h2: ({ children }) => <h2 className="mt-2.5 mb-1 text-[13.5px] font-bold text-ink leading-snug">{processChildren(children)}</h2>,
+        h3: ({ children }) => <h3 className="mt-2 mb-0.5 text-[13px] font-semibold text-ink leading-snug">{processChildren(children)}</h3>,
+        // Inline
+        strong: ({ children }) => <strong className="font-semibold text-ink">{children}</strong>,
+        em: ({ children }) => <em className="italic opacity-90">{children}</em>,
+        // Code
+        pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
+        code: ({ children, className }) => {
+          if (className) return <code className={className}>{children}</code>;
+          return (
+            <code className="mx-0.5 rounded bg-elevated px-1 py-0.5 font-mono text-[11.5px] font-medium text-indigo-400 border border-hairline">
+              {children}
+            </code>
+          );
+        },
+        // Lists
+        ul: ({ children }) => <ul className="my-1 ml-4 list-disc space-y-0.5 text-[13.5px]">{children}</ul>,
+        ol: ({ children }) => <ol className="my-1 ml-4 list-decimal space-y-0.5 text-[13.5px]">{children}</ol>,
+        li: ({ children }) => <li className="leading-relaxed">{processChildren(children)}</li>,
+        // Blockquote
+        blockquote: ({ children }) => (
+          <blockquote className="my-1.5 border-l-2 border-accent pl-3 text-muted italic">{children}</blockquote>
+        ),
+        // Horizontal rule
+        hr: () => <hr className="my-2 border-hairline" />,
+        // Links
+        a: ({ href, children }) => (
+          <a href={href} target="_blank" rel="noreferrer" className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300 transition-colors">
+            {children}
+          </a>
+        ),
+        // Paragraphs — detect hex colors inside text nodes
+        p: ({ children }) => <p className="leading-relaxed">{processChildren(children)}</p>,
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
+
+// Walk react-markdown's children and inject color swatches into string nodes
+function processChildren(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child === "string") return renderWithColors(child);
+    return child;
+  });
 }

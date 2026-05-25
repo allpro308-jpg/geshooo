@@ -4,7 +4,7 @@ import path from "node:path";
 import type { ToolSpec } from "@singulary/agent";
 
 import { db, nowIso } from "@/db/database";
-import { dockerRequest, dockerStream, inspectContainer } from "@/modules/docker/docker-client";
+import { dockerRequest, dockerStream, getContainerLogs, inspectContainer } from "@/modules/docker/docker-client";
 import { resolveProjectRoot, resolveSafePath } from "@/modules/projects/project-filesystem";
 import {
   loadProject,
@@ -16,7 +16,8 @@ import {
   ensureAgentPreWriteSnapshot,
   getSnapshot,
   listSnapshots,
-  restoreSnapshot
+  restoreSnapshot,
+  setSessionChangeTitle
 } from "@/modules/snapshots/snapshot-service";
 import { provisionServiceFromTemplate } from "@/modules/workspace-services/service-runtime";
 
@@ -115,16 +116,206 @@ async function recFind(
   }
 }
 
+function toPositiveInt(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const n = Math.trunc(value);
+  return n > 0 ? n : null;
+}
+
+function toNonNegativeInt(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const n = Math.trunc(value);
+  return n >= 0 ? n : null;
+}
+
+/**
+ * Apply optional head/tail/startLine+endLine/startChar+endChar slicing to a
+ * file's full text. Returns the same shape regardless of mode, including
+ * metadata so the agent can decide whether to widen the slice.
+ */
+function sliceFile(
+  relPath: string,
+  fullContent: string,
+  args: Record<string, unknown>
+): {
+  path: string;
+  content: string;
+  totalLines: number;
+  totalChars: number;
+  slice:
+    | { mode: "full" }
+    | { mode: "head"; lines: number }
+    | { mode: "tail"; lines: number }
+    | { mode: "lineRange"; startLine: number; endLine: number }
+    | { mode: "charRange"; startChar: number; endChar: number };
+  truncated: boolean;
+} | { error: string } {
+  const totalChars = fullContent.length;
+  const lines = fullContent.split("\n");
+  // If the file ends with a newline, split() produces a trailing empty entry —
+  // exclude it from the visible line count.
+  const totalLines = lines.length > 0 && lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
+
+  const head = toPositiveInt(args.head);
+  const tail = toPositiveInt(args.tail);
+  const startLine = toPositiveInt(args.startLine);
+  const endLine = toPositiveInt(args.endLine);
+  const startChar = toNonNegativeInt(args.startChar);
+  const endChar = toNonNegativeInt(args.endChar);
+
+  const modesProvided = [
+    head != null,
+    tail != null,
+    startLine != null || endLine != null,
+    startChar != null || endChar != null
+  ].filter(Boolean).length;
+  if (modesProvided > 1) {
+    return {
+      error:
+        "Provide at most one slicing mode: head, tail, startLine/endLine, or startChar/endChar."
+    };
+  }
+
+  if (head != null) {
+    const sliced = lines.slice(0, head).join("\n");
+    return {
+      path: relPath,
+      content: sliced,
+      totalLines,
+      totalChars,
+      slice: { mode: "head", lines: Math.min(head, totalLines) },
+      truncated: head < totalLines
+    };
+  }
+
+  if (tail != null) {
+    const start = Math.max(0, totalLines - tail);
+    const sliced = lines.slice(start, totalLines).join("\n");
+    return {
+      path: relPath,
+      content: sliced,
+      totalLines,
+      totalChars,
+      slice: { mode: "tail", lines: Math.min(tail, totalLines) },
+      truncated: tail < totalLines
+    };
+  }
+
+  if (startLine != null || endLine != null) {
+    if (startLine == null || endLine == null) {
+      return { error: "startLine and endLine must be provided together." };
+    }
+    if (endLine < startLine) {
+      return { error: "endLine must be >= startLine." };
+    }
+    const from = Math.min(startLine, totalLines);
+    const to = Math.min(endLine, totalLines);
+    const sliced = lines.slice(from - 1, to).join("\n");
+    return {
+      path: relPath,
+      content: sliced,
+      totalLines,
+      totalChars,
+      slice: { mode: "lineRange", startLine: from, endLine: to },
+      truncated: from > 1 || to < totalLines
+    };
+  }
+
+  if (startChar != null || endChar != null) {
+    if (startChar == null || endChar == null) {
+      return { error: "startChar and endChar must be provided together." };
+    }
+    if (endChar < startChar) {
+      return { error: "endChar must be >= startChar." };
+    }
+    const from = Math.min(startChar, totalChars);
+    const to = Math.min(endChar, totalChars);
+    return {
+      path: relPath,
+      content: fullContent.slice(from, to),
+      totalLines,
+      totalChars,
+      slice: { mode: "charRange", startChar: from, endChar: to },
+      truncated: from > 0 || to < totalChars
+    };
+  }
+
+  return {
+    path: relPath,
+    content: fullContent,
+    totalLines,
+    totalChars,
+    slice: { mode: "full" },
+    truncated: false
+  };
+}
+
 // --- tools ---------------------------------------------------------------
 
 export const agentTools: Array<ToolSpec<AgentToolContext>> = [
   {
-    name: "read_file",
-    description: "Read the contents of a file in the workspace.",
+    name: "set_change_title",
+    description:
+      "Set a short human-readable title (3-8 words, imperative voice, e.g. 'Add login form validation') summarizing the change you are about to make. You MUST call this exactly once at the very start of every turn — before reading files, writing files, or running shell commands. The title is shown in the snapshot history so the user can scan what each change does.",
     parameters: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Relative path of the file to read" }
+        title: {
+          type: "string",
+          description:
+            "3-8 word imperative-voice summary of the upcoming change (e.g. 'Fix login redirect bug')."
+        }
+      },
+      required: ["title"]
+    },
+    _timeout: 5,
+    _risk: "safe",
+    handler: async (args, { ctx }) => {
+      const raw = typeof args.title === "string" ? args.title.trim() : "";
+      if (!raw) return { error: "title is required" };
+      // Cap to a sensible length so it always fits in a single line.
+      const title = raw.length > 120 ? `${raw.slice(0, 117)}…` : raw;
+      const result = setSessionChangeTitle(ctx.sessionId, title);
+      return {
+        success: true,
+        title,
+        applied: result.applied,
+        snapshotId: result.snapshotId
+      };
+    }
+  },
+  {
+    name: "read_file",
+    description:
+      "Read a file from the workspace. By default returns the full file. To save tokens on large files, pass one of: `head` (first N lines), `tail` (last N lines), `startLine`+`endLine` (1-indexed inclusive line range), or `startChar`+`endChar` (0-indexed byte/char offsets). At most one slicing mode at a time. The response includes `totalLines`, `totalChars`, and `slice` describing what was actually returned.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Relative path of the file to read" },
+        head: {
+          type: "number",
+          description: "Return only the first N lines. Mutually exclusive with tail / startLine / startChar."
+        },
+        tail: {
+          type: "number",
+          description: "Return only the last N lines. Mutually exclusive with head / startLine / startChar."
+        },
+        startLine: {
+          type: "number",
+          description: "1-indexed start line (inclusive). Pair with endLine."
+        },
+        endLine: {
+          type: "number",
+          description: "1-indexed end line (inclusive). Pair with startLine."
+        },
+        startChar: {
+          type: "number",
+          description: "0-indexed start character offset. Pair with endChar."
+        },
+        endChar: {
+          type: "number",
+          description: "0-indexed end character offset (exclusive). Pair with startChar."
+        }
       },
       required: ["path"]
     },
@@ -136,8 +327,8 @@ export const agentTools: Array<ToolSpec<AgentToolContext>> = [
       if (matcher.isIgnored(relPath)) return denied(relPath);
       const safePath = resolveSafePath(root, relPath);
       try {
-        const content = await fs.readFile(safePath, "utf8");
-        return { path: relPath, content };
+        const fullContent = await fs.readFile(safePath, "utf8");
+        return sliceFile(relPath, fullContent, args);
       } catch (error: any) {
         return { error: `Failed to read file: ${error.message}` };
       }
@@ -767,6 +958,52 @@ export const agentTools: Array<ToolSpec<AgentToolContext>> = [
         };
       } catch (err: any) {
         return { error: `Failed to restore snapshot: ${err.message}` };
+      }
+    }
+  },
+  {
+    name: "logs_read",
+    description:
+      "Read the runtime logs of the project's container. Use this to diagnose crashes, errors, or unexpected behavior without running a shell command.",
+    parameters: {
+      type: "object",
+      properties: {
+        tail: {
+          type: "number",
+          description: "Number of most-recent lines to return (default 100, max 2000)"
+        },
+        stderr: {
+          type: "boolean",
+          description: "Include stderr output (default true)"
+        },
+        stdout: {
+          type: "boolean",
+          description: "Include stdout output (default true)"
+        },
+        timestamps: {
+          type: "boolean",
+          description: "Prefix each line with an ISO timestamp (default false)"
+        }
+      }
+    },
+    _timeout: 15,
+    _risk: "safe",
+    handler: async (args, { ctx }) => {
+      try {
+        const project = loadProject(ctx.projectId);
+        if (!project.containerId) {
+          return { error: "Project has no running container. Start the project first." };
+        }
+        const tail = typeof args.tail === "number" && args.tail > 0 ? Math.min(args.tail, 2000) : 100;
+        const logs = await getContainerLogs(project.containerId, {
+          tail,
+          stdout: args.stdout !== false,
+          stderr: args.stderr !== false,
+          timestamps: args.timestamps === true
+        });
+        return { logs: logs || "(no output)" };
+      } catch (err: any) {
+        return { error: `Failed to read logs: ${err.message}` };
       }
     }
   }

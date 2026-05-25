@@ -1,4 +1,10 @@
-import type { AgentMessage, AgentSession, ApprovalRequest, ProviderWithModels } from "@singulary/shared";
+import type {
+  AgentApprovalMode,
+  AgentMessage,
+  AgentSession,
+  ApprovalRequest,
+  ProviderWithModels
+} from "@singulary/shared";
 
 import { apiDelete, apiGet, apiPatch,apiPost } from "./api";
 
@@ -13,11 +19,20 @@ export const agentService = {
     return apiGet<{ sessions: AgentSession[] }>(url);
   },
 
-  createSession: (input: { workspaceId: string; projectId?: string; modelProvider?: string; modelName?: string }) => {
+  createSession: (input: {
+    workspaceId: string;
+    projectId?: string;
+    modelProvider?: string;
+    modelName?: string;
+    approvalMode?: AgentApprovalMode;
+  }) => {
     return apiPost<{ session: AgentSession }>("/api/agent/sessions", input);
   },
 
-  updateSession: (sessionId: string, input: { title: string | null }) => {
+  updateSession: (
+    sessionId: string,
+    input: { title?: string | null; approvalMode?: AgentApprovalMode }
+  ) => {
     return apiPatch<{ session: AgentSession }>(`/api/agent/sessions/${sessionId}`, input);
   },
 
@@ -35,7 +50,13 @@ export const agentService = {
 
   sendMessage: (
     sessionId: string,
-    input: { content: string; modelProvider?: string; modelName?: string; tempId?: string }
+    input: {
+      content: string;
+      modelProvider?: string;
+      modelName?: string;
+      tempId?: string;
+      approvalMode?: AgentApprovalMode;
+    }
   ) => {
     return apiPost<{ success: boolean }>(`/api/agent/sessions/${sessionId}/messages`, input);
   },
