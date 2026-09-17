@@ -1,0 +1,35 @@
+services:
+  setup:
+    image: node:22-bookworm
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "corepack enable &&
+      mkdir -p storage &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @singulary/shared build &&
+      pnpm --filter @singulary/inference build &&
+      pnpm --filter @singulary/agent build"
+
+  app:
+    image: node:22-bookworm
+    working_dir: /app
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:5173"
+    env_file:
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_PATH=/app/storage/singulary.sqlite
+      - WEB_ORIGIN=https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    command: sh -c "corepack enable && pnpm dev"
+    restart: unless-stopped

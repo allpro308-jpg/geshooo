@@ -1,0 +1,13 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/api/health",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "SESSION_SECRET",
+      "description": "Signs session cookies for the Express backend. Generate with `openssl rand -base64 32`.",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    }
+  ]
+}
