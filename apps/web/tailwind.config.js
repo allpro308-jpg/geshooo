@@ -32,7 +32,7 @@ export default {
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "Tajawal",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

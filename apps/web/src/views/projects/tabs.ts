@@ -14,12 +14,12 @@ export type ProjectTabDef = {
 };
 
 export const projectTabs: ProjectTabDef[] = [
-  { id: "code", label: "Code", iconKey: "code" },
-  { id: "preview", label: "Preview", iconKey: "preview" },
-  { id: "environment", label: "Environment", iconKey: "env" },
-  { id: "snapshots", label: "Snapshots", iconKey: "snapshots" },
-  { id: "connections", label: "Connections", iconKey: "connections", comingSoon: true },
-  { id: "settings", label: "Settings", iconKey: "settings" }
+  { id: "code", label: "الكود", iconKey: "code" },
+  { id: "preview", label: "المعاينة", iconKey: "preview" },
+  { id: "environment", label: "البيئة", iconKey: "env" },
+  { id: "snapshots", label: "اللقطات", iconKey: "snapshots" },
+  { id: "connections", label: "الاتصالات", iconKey: "connections", comingSoon: true },
+  { id: "settings", label: "الإعدادات", iconKey: "settings" }
 ];
 
 const valid: ProjectTab[] = [

@@ -42,10 +42,10 @@ type FilePair = {
 type ChangedStatus = Exclude<SnapshotDiffEntry["status"], "unchanged">;
 
 const STATUS_LABEL: Record<SnapshotDiffEntry["status"], string> = {
-  added: "Added",
-  removed: "Removed",
-  modified: "Modified",
-  unchanged: "Unchanged"
+  added: "مُضاف",
+  removed: "محذوف",
+  modified: "مُعدّل",
+  unchanged: "بدون تغيير"
 };
 
 const STATUS_STYLES: Record<SnapshotDiffEntry["status"], string> = {
@@ -56,12 +56,12 @@ const STATUS_STYLES: Record<SnapshotDiffEntry["status"], string> = {
 };
 
 const KIND_LABEL: Record<SnapshotKind, string> = {
-  manual: "Manual",
-  agent_pre_write: "Agent pre-write",
-  agent_batch: "Agent batch",
-  before_command: "Before command",
-  checkpoint: "Checkpoint",
-  rollback: "Rollback"
+  manual: "يدوي",
+  agent_pre_write: "وكيل قبل الكتابة",
+  agent_batch: "دفعة الوكيل",
+  before_command: "قبل الأمر",
+  checkpoint: "نقطة تحقق",
+  rollback: "تراجع"
 };
 
 const KIND_ICON: Record<SnapshotKind, JSX.Element> = {
@@ -106,7 +106,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
           return response.snapshots[0]?.id ?? null;
         });
       } catch (requestError) {
-        setError(errorMessage(requestError, "Failed to load snapshots."));
+        setError(errorMessage(requestError, "فشل تحميل اللقطات."));
       }
     },
     [projectId]
@@ -162,7 +162,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
       })
       .catch((requestError) => {
         if (cancelled) return;
-        setError(errorMessage(requestError, "Failed to load diff."));
+        setError(errorMessage(requestError, "فشل تحميل الفروقات."));
         setDiff(null);
       })
       .finally(() => {
@@ -210,7 +210,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
       })
       .catch((requestError) => {
         if (cancelled) return;
-        setError(errorMessage(requestError, "Failed to load file contents."));
+        setError(errorMessage(requestError, "فشل تحميل محتوى الملف."));
       })
       .finally(() => {
         if (!cancelled) setFileLoading(false);
@@ -255,7 +255,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
   }
 
   async function handleCreateSnapshot() {
-    const message = window.prompt("Snapshot message?", "Manual snapshot");
+    const message = window.prompt("رسالة اللقطة؟", "لقطة يدوية");
     if (!message) return;
     setBusy(true);
     setError(null);
@@ -370,13 +370,13 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
       {snapshotsPanelOpen ? (
         <aside className="flex w-56 shrink-0 flex-col border-r border-hairline bg-bg/50 md:w-64 xl:w-72">
           <div className="flex h-9 shrink-0 items-center justify-between border-b border-hairline px-3">
-            <div className="text-[11px] uppercase tracking-tighter2 text-dim">Snapshots</div>
+            <div className="text-[11px] tracking-tighter2 text-dim">اللقطات</div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={handleCreateSnapshot}
                 disabled={busy}
-                title="Create snapshot"
+                title="إنشاء لقطة"
                 className="focus-ring grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-50"
               >
                 <Plus size={13} />
@@ -399,7 +399,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
             ) : snapshots.length === 0 ? (
               <EmptyHint
                 icon={<Camera size={18} className="text-dim" />}
-                title="No snapshots yet"
+                title="لا توجد لقطات بعد"
                 hint="Snapshots are taken before every AI write, or you can create one manually."
               />
             ) : (
@@ -439,7 +439,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
               type="button"
               onClick={() => prevId && selectTarget(prevId)}
               disabled={!prevId}
-              title="Older snapshot (parent)"
+              title="لقطة أقدم (الأصل)"
               className="focus-ring grid h-7 w-7 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-40"
             >
               <ArrowLeft size={13} />
@@ -448,7 +448,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
               type="button"
               onClick={() => nextId && selectTarget(nextId)}
               disabled={!nextId}
-              title="Newer snapshot (child)"
+              title="لقطة أحدث (الفرع)"
               className="focus-ring grid h-7 w-7 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-40"
             >
               <ArrowRight size={13} />
@@ -470,14 +470,14 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
 
               <div className="flex items-center gap-2">
                 <label className="hidden items-center gap-2 text-[11px] text-dim md:flex">
-                  <span className="hidden lg:inline">Compare with</span>
+                  <span className="hidden lg:inline">مقارنة مع</span>
                   <span className="lg:hidden">Base</span>
                   <select
                     value={baseId ?? ""}
                     onChange={(event) => selectBase(event.target.value || null)}
                     className="focus-ring h-7 max-w-[14rem] rounded-md border border-line bg-elevated px-2 text-xs text-ink"
                   >
-                    <option value="">Empty (initial state)</option>
+                    <option value="">فارغ (الحالة الأولية)</option>
                     {snapshots
                       ?.filter((snap) => snap.id !== target.id)
                       .map((snap) => (
@@ -494,8 +494,8 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
                   onClick={handleRestoreSnapshot}
                   disabled={busy}
                 >
-                  <span className="hidden sm:inline">Restore snapshot</span>
-                  <span className="sm:hidden">Restore</span>
+                  <span className="hidden sm:inline">استعادة اللقطة</span>
+                  <span className="sm:hidden">استعادة</span>
                 </Button>
               </div>
             </>
@@ -531,7 +531,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
             {filesPanelOpen ? (
               <div className="flex w-56 shrink-0 flex-col border-r border-hairline bg-bg/30 md:w-64 xl:w-72">
                 <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-hairline px-3 text-[11px] uppercase tracking-tighter2 text-dim">
-                  <span>Files</span>
+                  <span>الملفات</span>
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-1.5 text-[10px] normal-case tracking-normal text-dim">
                       <input
@@ -539,7 +539,7 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
                         checked={showUnchanged}
                         onChange={(event) => setShowUnchanged(event.target.checked)}
                       />
-                      <span className="hidden md:inline">Show unchanged</span>
+                      <span className="hidden md:inline">إظهار بدون تغيير</span>
                       <span className="md:hidden">All</span>
                     </label>
                     <button
@@ -563,11 +563,11 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
                   ) : visibleEntries.length === 0 ? (
                     <EmptyHint
                       icon={<FileDiff size={18} className="text-dim" />}
-                      title="No changes"
+                      title="لا تغييرات"
                       hint={
                         diff && diff.entries.length > 0
                           ? "No differences between these snapshots. Toggle 'show unchanged' to browse all files."
-                          : "This snapshot is empty."
+                          : "هذه اللقطة فارغة."
                       }
                     />
                   ) : (
@@ -619,11 +619,11 @@ export function SnapshotsTab({ projectId }: SnapshotsTabProps) {
                       disabled={busy || selectedEntry.status === "removed"}
                       title={
                         selectedEntry.status === "removed"
-                          ? "File was deleted in this snapshot — restore the whole snapshot to remove it from the working tree."
+                          ? "تم حذف الملف في هذه اللقطة — استعد اللقطة كاملة لإزالته من شجرة العمل."
                           : "Write this file from the target snapshot into the working tree."
                       }
                     >
-                      <span className="hidden sm:inline">Restore file</span>
+                      <span className="hidden sm:inline">استعادة الملف</span>
                       <span className="sm:hidden">File</span>
                     </Button>
                   </>

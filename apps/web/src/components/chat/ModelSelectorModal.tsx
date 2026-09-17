@@ -47,14 +47,14 @@ export function ModelSelectorModal({ isOpen, onClose }: ModelSelectorModalProps)
       return (
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-[11px] text-muted">
-            <span>Quota Usage</span>
-            <span className="font-mono text-ink font-semibold">{quota.userUsed.toLocaleString()} tokens</span>
+            <span>استخدام الحصة</span>
+            <span className="font-mono text-ink font-semibold">{quota.userUsed.toLocaleString()} رمز</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-elevated overflow-hidden">
             <div className={`h-full ${isPersonal ? "bg-emerald-500" : "bg-indigo-500"} w-1/4 rounded-full`} />
           </div>
           <span className="text-[10px] text-dim">
-            {isPersonal ? "Bring Your Own Key (Unlimited)" : "Unbounded Limit"}
+            {isPersonal ? "مفتاحك الخاص (غير محدود)" : "حد غير محدود"}
           </span>
         </div>
       );
@@ -66,17 +66,17 @@ export function ModelSelectorModal({ isOpen, onClose }: ModelSelectorModalProps)
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between text-[11px] text-muted">
-          <span>Quota Usage</span>
+          <span>استخدام الحصة</span>
           <span className="font-mono text-ink font-semibold">
-            {quota.userUsed.toLocaleString()} / {quota.userLimit.toLocaleString()} tokens
+            {quota.userUsed.toLocaleString()} / {quota.userLimit.toLocaleString()} رمز
           </span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-elevated overflow-hidden">
           <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
         </div>
         <div className="flex items-center justify-between text-[9px] text-dim font-medium">
-          <span>{pct.toFixed(0)}% Used</span>
-          <span className="capitalize">Period: {quota.period || "Monthly"}</span>
+          <span>{pct.toFixed(0)}% مستخدم</span>
+          <span className="capitalize">الفترة: {quota.period || "شهرية"}</span>
         </div>
       </div>
     );
@@ -142,7 +142,7 @@ export function ModelSelectorModal({ isOpen, onClose }: ModelSelectorModalProps)
             
             {providers.length === 0 && !isLoadingModels && (
               <div className="px-4 py-8 text-center text-xs text-dim">
-                No active LLM providers. Please configure one in Platform settings first.
+                لا توجد مزودي نماذج لغة نشطين. يرجى إعداد واحد في إعدادات المنصة أولاً.
               </div>
             )}
           </div>
@@ -152,7 +152,7 @@ export function ModelSelectorModal({ isOpen, onClose }: ModelSelectorModalProps)
             <div className="border-t border-hairline mx-3 pt-3 mt-auto px-1">
               <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted">
                 <PieChart size={13} className="text-indigo-500" />
-                <span>Your Usage Quota</span>
+                <span>حصة استخدامك</span>
               </div>
               {renderQuotaBar(
                 { userUsed: activeProvider.quota.userUsed, userLimit: activeProvider.quota.userLimit, period: activeProvider.quota.period },

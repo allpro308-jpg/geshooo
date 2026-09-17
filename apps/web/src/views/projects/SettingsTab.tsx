@@ -71,7 +71,7 @@ export function SettingsTab({ project, onProjectChange }: SettingsTabProps) {
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1500);
     } catch (requestError) {
-      setError(errorMessage(requestError, "Failed to save settings."));
+      setError(errorMessage(requestError, "فشل حفظ الإعدادات."));
     } finally {
       setBusy(false);
     }
@@ -80,28 +80,28 @@ export function SettingsTab({ project, onProjectChange }: SettingsTabProps) {
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <div className="mb-6">
-        <div className="text-[10px] font-semibold uppercase tracking-tighter2 text-accent">Settings</div>
-        <h2 className="mt-1 text-2xl font-semibold tracking-tighter2 text-ink">Runtime configuration</h2>
+        <div className="text-[10px] font-semibold tracking-tighter2 text-accent">الإعدادات</div>
+        <h2 className="mt-1 text-2xl font-semibold tracking-tighter2 text-ink">إعدادات بيئة التشغيل</h2>
         <p className="mt-2 max-w-xl text-sm text-muted">
-          Pick the runtime image, then the install and start commands that run inside the container.
+          اختر صورة بيئة التشغيل، ثم أوامر التثبيت والتشغيل التي تعمل داخل الحاوية.
         </p>
       </div>
 
       <div className="grid gap-5 rounded-xl border border-hairline bg-surface p-5">
         <TextInput
-          label="Project name"
+          label="اسم المشروع"
           value={draft.name}
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}
         />
 
         <div className="grid gap-1.5">
-          <div className="text-xs font-medium uppercase tracking-tightish text-muted">Template</div>
+          <div className="text-xs font-medium tracking-tightish text-muted">القالب</div>
           <select
             value={draft.templateId}
             onChange={(event) => pickTemplate(event.target.value)}
             className={selectClass}
           >
-            <option value="">Auto-detect from runtime</option>
+            <option value="">اكتشاف تلقائي من بيئة التشغيل</option>
             {templates.map((template) => (
               <option key={template.id} value={template.id}>
                 {template.name} · {template.image}
@@ -112,21 +112,21 @@ export function SettingsTab({ project, onProjectChange }: SettingsTabProps) {
         </div>
 
         <FieldWithDefault
-          label="Install command"
+          label="أمر التثبيت"
           placeholder={selectedTemplate?.installCommand ?? "—"}
           value={draft.installCommand}
           onChange={(value) => setDraft({ ...draft, installCommand: value })}
           mono
-          hint="Runs once on container boot before the start command."
+          hint="يعمل مرة واحدة عند إقلاع الحاوية قبل أمر التشغيل."
         />
 
         <FieldWithDefault
-          label="Start command"
+          label="أمر التشغيل"
           placeholder={selectedTemplate?.startCommand ?? "—"}
           value={draft.startCommand}
           onChange={(value) => setDraft({ ...draft, startCommand: value })}
           mono
-          hint="The dev process. Bind to 0.0.0.0 so the preview can see it on whichever port you choose."
+          hint="عملية التطوير. اربط بـ 0.0.0.0 لترى المعاينة المنفذ الذي تختاره."
         />
       </div>
 
@@ -139,12 +139,12 @@ export function SettingsTab({ project, onProjectChange }: SettingsTabProps) {
       <div className="mt-5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-dim">
           <Sparkles size={12} className="text-accent" />
-          Ports are detected automatically from the container — no need to declare one here.
+          يتم اكتشاف المنافذ تلقائياً من الحاوية — لا حاجة لإعلان منفذ هنا.
         </div>
         <div className="flex items-center gap-2">
-          {savedFlash ? <span className="text-xs text-accent">Saved</span> : null}
+          {savedFlash ? <span className="text-xs text-accent">تم الحفظ</span> : null}
           <Button icon={<Save size={14} />} onClick={save} disabled={busy}>
-            {busy ? "Saving…" : "Save settings"}
+            {busy ? "جارٍ الحفظ…" : "حفظ الإعدادات"}
           </Button>
         </div>
       </div>
@@ -166,7 +166,7 @@ function TemplateSummary({ template }: { template: ProjectTemplate }) {
       <p className="text-xs text-muted">{template.description}</p>
       {template.hints.commonPorts.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1 text-[10px] text-dim">
-          <span className="uppercase tracking-tighter2">Common ports</span>
+          <span className="tracking-tighter2">المنافذ الشائعة</span>
           {template.hints.commonPorts.map((port) => (
             <span
               key={port}
@@ -201,7 +201,7 @@ function FieldWithDefault({
       <div className="mb-1.5 flex items-center justify-between">
         <div className="text-xs font-medium uppercase tracking-tightish text-muted">{label}</div>
         {value === "" && placeholder && placeholder !== "—" ? (
-          <span className="font-mono text-[10px] text-dim">default: {placeholder}</span>
+          <span className="font-mono text-[10px] text-dim">افتراضي: {placeholder}</span>
         ) : null}
       </div>
       <input

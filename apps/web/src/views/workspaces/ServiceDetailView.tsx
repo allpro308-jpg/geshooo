@@ -46,7 +46,7 @@ export function ServiceDetailPage() {
       const response = await workspacesService.getServiceDetail(serviceId);
       setDetail(response);
     } catch (requestError) {
-      setError(errorMessage(requestError, "Failed to load service."));
+      setError(errorMessage(requestError, "فشل تحميل الخدمة."));
     }
   }
 
@@ -80,7 +80,7 @@ export function ServiceDetailPage() {
 
   async function runAction(action: "start" | "stop" | "restart" | "destroy") {
     if (!serviceId) return;
-    if (action === "destroy" && !window.confirm("Destroy this service? Container and volumes will be removed.")) {
+    if (action === "destroy" && !window.confirm("هل تريد تدمير هذه الخدمة؟ ستُزال الحاوية والأحجام.")) {
       return;
     }
     setActionBusy(action);
@@ -94,7 +94,7 @@ export function ServiceDetailPage() {
       await loadDetail();
       await loadLogs();
     } catch (requestError) {
-      setError(errorMessage(requestError, "Action failed."));
+      setError(errorMessage(requestError, "فشل الإجراء."));
     } finally {
       setActionBusy(null);
     }
@@ -108,8 +108,8 @@ export function ServiceDetailPage() {
           onClick={() => navigate(`/workspaces/${workspaceId}`)}
           className="focus-ring inline-flex items-center gap-1.5 rounded-md text-xs text-muted transition-colors hover:text-ink"
         >
-          <ArrowLeft size={13} />
-          Back to workspace
+          <ArrowLeft size={13} className="rtl-flip" />
+          العودة إلى مساحة العمل
         </button>
       </div>
 
@@ -130,7 +130,7 @@ export function ServiceDetailPage() {
             <div>
               <div className="flex items-center gap-2 text-xs text-dim">
                 <Database size={12} className="text-accent" />
-                <span className="uppercase tracking-tighter2">Service</span>
+                <span className="tracking-tighter2">خدمة</span>
                 <span>·</span>
                 <span className="font-mono">{detail.service.slug}</span>
               </div>
@@ -154,7 +154,7 @@ export function ServiceDetailPage() {
               disabled={detail.runtime.status === "running" || actionBusy !== null}
               onClick={() => void runAction("start")}
             >
-              {actionBusy === "start" ? "Starting…" : "Start"}
+              {actionBusy === "start" ? "جارٍ التشغيل…" : "تشغيل"}
             </Button>
             <Button
               variant="secondary"
@@ -163,7 +163,7 @@ export function ServiceDetailPage() {
               disabled={detail.runtime.status !== "running" || actionBusy !== null}
               onClick={() => void runAction("stop")}
             >
-              {actionBusy === "stop" ? "Stopping…" : "Stop"}
+              {actionBusy === "stop" ? "جارٍ الإيقاف…" : "إيقاف"}
             </Button>
             <Button
               variant="secondary"
@@ -172,7 +172,7 @@ export function ServiceDetailPage() {
               disabled={actionBusy !== null}
               onClick={() => void runAction("restart")}
             >
-              {actionBusy === "restart" ? "Restarting…" : "Restart"}
+              {actionBusy === "restart" ? "جارٍ إعادة التشغيل…" : "إعادة التشغيل"}
             </Button>
             <Button
               variant="danger"
@@ -181,16 +181,16 @@ export function ServiceDetailPage() {
               disabled={actionBusy !== null}
               onClick={() => void runAction("destroy")}
             >
-              {actionBusy === "destroy" ? "Destroying…" : "Destroy"}
+              {actionBusy === "destroy" ? "جارٍ التدمير…" : "تدمير"}
             </Button>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Panel title="Connection">
-              <Field label="URI" mono>
+            <Panel title="الاتصال">
+              <Field label="الرابط" mono>
                 {detail.connectionUri ? <SecretValue value={detail.connectionUri} censored /> : "—"}
               </Field>
-              <Field label="Internal host" mono>
+              <Field label="المضيف الداخلي" mono>
                 <code>
                   {detail.service.internalHost}
                   {detail.service.internalPort ? `:${detail.service.internalPort}` : ""}
@@ -200,7 +200,7 @@ export function ServiceDetailPage() {
                 label={
                   <span className="inline-flex items-center gap-1">
                     <Network size={11} />
-                    Container IP
+                    عنوان IP للحاوية
                   </span>
                 }
                 mono
@@ -208,15 +208,15 @@ export function ServiceDetailPage() {
                 <code>{detail.runtime.ipAddress ?? "—"}</code>
               </Field>
               {detail.service.connectionEnvKey ? (
-                <Field label="Env key" mono>
+                <Field label="مفتاح البيئة" mono>
                   <code>{detail.service.connectionEnvKey}</code>
                 </Field>
               ) : null}
             </Panel>
 
-            <Panel title="Credentials">
+            <Panel title="البيانات السرية">
               {detail.credentials.length === 0 ? (
-                <div className="text-sm text-muted">No credentials stored for this service.</div>
+                <div className="text-sm text-muted">لا توجد بيانات سرية مخزنة لهذه الخدمة.</div>
               ) : (
                 <div className="grid gap-2">
                   {detail.credentials.map((credential) => (
@@ -229,10 +229,10 @@ export function ServiceDetailPage() {
 
           <Panel
             className="mt-4"
-            title="Logs"
+            title="السجلات"
             action={
               <Button variant="ghost" size="sm" icon={<RefreshCw size={12} />} onClick={() => void loadLogs()}>
-                Refresh
+                تحديث
               </Button>
             }
           >

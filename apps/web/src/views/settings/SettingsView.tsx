@@ -7,18 +7,18 @@ export function SettingsPage() {
   return (
     <div>
       <div className="mb-7">
-        <div className="text-[10px] font-semibold uppercase tracking-tighter2 text-accent">Account</div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tighter2 text-ink">Settings</h1>
-        <p className="mt-2 text-sm text-muted">Your account on this self-hosted instance.</p>
+        <div className="text-[10px] font-semibold tracking-tighter2 text-accent">الحساب</div>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tighter2 text-ink">الإعدادات</h1>
+        <p className="mt-2 text-sm text-muted">حسابك في هذه النسخة المستضافة ذاتياً.</p>
       </div>
-      <Section title="Profile">
+      <Section title="الملف الشخصي">
         <div className="rounded-xl border border-hairline bg-surface p-5">
           <dl className="grid gap-5 text-sm sm:grid-cols-3">
-            <Field label="Display name" value={user?.displayName} />
-            <Field label="Username" value={user?.username ? `@${user.username}` : undefined} />
-            <Field label="Email" value={user?.email} />
-            <Field label="Role" value={user?.role} mono />
-            <Field label="User ID" value={user?.id} mono />
+            <Field label="الاسم المعروض" value={user?.displayName} />
+            <Field label="اسم المستخدم" value={user?.username ? `@${user.username}` : undefined} />
+            <Field label="البريد الإلكتروني" value={user?.email} />
+            <Field label="الدور" value={user?.role} mono />
+            <Field label="معرف المستخدم" value={user?.id} mono />
           </dl>
         </div>
       </Section>

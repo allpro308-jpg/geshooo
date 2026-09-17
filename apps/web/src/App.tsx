@@ -43,7 +43,7 @@ export function App() {
           <div className="animate-pulse">
             <LogoMark />
           </div>
-          <div className="text-xs uppercase tracking-tighter2 text-dim">Loading singulary…</div>
+          <div className="text-xs uppercase tracking-tighter2 text-dim">جارٍ تحميل سنغولاري…</div>
         </div>
       </div>
     );

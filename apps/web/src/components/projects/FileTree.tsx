@@ -40,14 +40,14 @@ export function FileTree({
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-9 shrink-0 items-center justify-between border-b border-hairline px-3">
-        <div className="text-[10px] font-semibold uppercase tracking-tighter2 text-dim">Files</div>
+        <div className="text-[10px] font-semibold tracking-tighter2 text-dim">الملفات</div>
         {onCreate ? (
           <div className="flex items-center gap-0.5">
             <button
               type="button"
               onClick={() => onCreate("", "file")}
               className="focus-ring grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
-              title="New file"
+              title="ملف جديد"
             >
               <Plus size={12} />
             </button>
@@ -127,7 +127,7 @@ function TreeNode({
       {loading && !entries ? (
         <div className="flex items-center gap-2 px-3 py-1 text-xs text-dim">
           <Loader2 size={12} className="animate-spin" />
-          Loading…
+          جارٍ التحميل…
         </div>
       ) : null}
       {entries?.map((entry) =>
@@ -154,7 +154,7 @@ function TreeNode({
         )
       )}
       {entries?.length === 0 && depth === 0 ? (
-        <div className="px-3 py-2 text-xs text-dim">Empty directory.</div>
+        <div className="px-3 py-2 text-xs text-dim">مجلد فارغ.</div>
       ) : null}
     </div>
   );

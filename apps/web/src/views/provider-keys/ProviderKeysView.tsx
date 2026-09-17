@@ -34,10 +34,10 @@ export function ProviderKeysPage() {
   return (
     <div>
       <div className="mb-7">
-        <div className="text-[10px] font-semibold uppercase tracking-tighter2 text-accent">BYOK</div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tighter2 text-ink">Provider keys</h1>
+        <div className="text-[10px] font-semibold tracking-tighter2 text-accent">مفاتيحك الخاصة</div>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tighter2 text-ink">مفاتيح المزود</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Bring your own model credentials. Keys are encrypted at rest and never shown back to you.
+          أحضر مفاتيح النماذج الخاصة بك. تُشفّر المفاتيح عند التخزين ولا تُعرض لك أبداً.
         </p>
       </div>
 
@@ -45,13 +45,13 @@ export function ProviderKeysPage() {
         <div className="mb-5 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{error}</div>
       ) : null}
 
-      <Section title="Add provider key">
+      <Section title="إضافة مفتاح مزود">
         <form
           className="grid gap-3 rounded-xl border border-hairline bg-surface p-5 lg:grid-cols-[180px_1fr_1fr_auto]"
           onSubmit={createProviderKey}
         >
-          <label className="grid gap-1.5 text-xs font-medium uppercase tracking-tightish text-muted">
-            <span>Provider</span>
+          <label className="grid gap-1.5 text-xs font-medium tracking-tightish text-muted">
+            <span>المزود</span>
             <select name="provider" className={selectClass}>
               {providers.map((provider) => (
                 <option key={provider} value={provider}>
@@ -60,20 +60,20 @@ export function ProviderKeysPage() {
               ))}
             </select>
           </label>
-          <TextInput label="Label" name="label" placeholder="Personal OpenAI" required />
-          <TextInput label="Key" name="key" type="password" autoComplete="off" required />
+          <TextInput label="التسمية" name="label" placeholder="OpenAI الشخصي" required />
+          <TextInput label="المفتاح" name="key" type="password" autoComplete="off" required />
           <div className="flex items-end">
             <Button type="submit" icon={<Plus size={15} />} className="w-full lg:w-auto">
-              Add key
+              إضافة مفتاح
             </Button>
           </div>
         </form>
       </Section>
 
-      <Section title="Configured keys">
+      <Section title="المفاتيح المُعدّة">
         <div className="overflow-hidden rounded-xl border border-hairline bg-surface">
           {keys.length === 0 ? (
-            <div className="p-6 text-sm text-muted">No provider keys configured yet.</div>
+            <div className="p-6 text-sm text-muted">لا توجد مفاتيح مزود مُعدّة بعد.</div>
           ) : (
             <ul className="divide-y divide-hairline">
               {keys.map((key) => (

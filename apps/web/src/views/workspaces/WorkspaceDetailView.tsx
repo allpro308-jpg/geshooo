@@ -63,7 +63,7 @@ export function WorkspaceDetailPage() {
     workspacesService
       .listServiceTemplates()
       .then((response) => setTemplates(response.templates))
-      .catch((requestError) => setLocalError(errorMessage(requestError, "Failed to load service templates.")))
+      .catch((requestError) => setLocalError(errorMessage(requestError, "فشل تحميل قوالب الخدمات.")))
       .finally(() => setTemplatesLoading(false));
   }, [serviceDialog, templates.length]);
 
@@ -83,7 +83,7 @@ export function WorkspaceDetailPage() {
       form.reset();
       setProjectDialog(false);
     } catch (requestError) {
-      setLocalError(errorMessage(requestError, "Failed to create project."));
+      setLocalError(errorMessage(requestError, "فشل إنشاء المشروع."));
     }
   }
 
@@ -106,19 +106,19 @@ export function WorkspaceDetailPage() {
 
           <div className="mt-2 grid gap-6 lg:grid-cols-2">
             <SectionPanel
-              title="Projects"
-              hint={`${workspaceProjects.length} active`}
+              title="المشاريع"
+              hint={`${workspaceProjects.length} نشط`}
               action={
                 <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setProjectDialog(true)}>
-                  New project
+                  مشروع جديد
                 </Button>
               }
             >
               {workspaceProjects.length === 0 ? (
                 <EmptyState
                   icon={<FolderGit2 size={18} />}
-                  title="No projects yet"
-                  hint="Add a frontend, backend, worker, or any runnable unit."
+                  title="لا توجد مشاريع بعد"
+                  hint="أضف واجهة أمامية، واجهة خلفية، عامل، أو أي وحدة قابلة للتشغيل."
                 />
               ) : (
                 <div className="grid gap-2">
@@ -134,19 +134,19 @@ export function WorkspaceDetailPage() {
             </SectionPanel>
 
             <SectionPanel
-              title="Services"
-              hint={`${workspaceServices.length} attached`}
+              title="الخدمات"
+              hint={`${workspaceServices.length} مرتبطة`}
               action={
                 <Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => setServiceDialog(true)}>
-                  New service
+                  خدمة جديدة
                 </Button>
               }
             >
               {workspaceServices.length === 0 ? (
                 <EmptyState
                   icon={<Database size={18} />}
-                  title="No services attached"
-                  hint="Add Postgres, Redis, object storage, or any shared dependency."
+                  title="لا توجد خدمات مرتبطة"
+                  hint="أضف بوستجرس، ريديس، تخزين كائنات، أو أي تبعية مشتركة."
                 />
               ) : (
                 <div className="grid gap-2">
@@ -165,21 +165,21 @@ export function WorkspaceDetailPage() {
           <div className="mt-8 rounded-xl border border-hairline bg-surface p-5">
             <div className="flex items-center gap-2 text-accent">
               <Sparkles size={14} />
-              <span className="text-xs font-semibold uppercase tracking-tighter2">Agent</span>
+              <span className="text-xs font-semibold tracking-tighter2">الوكيل</span>
             </div>
             <div className="mt-2 text-sm text-muted">
-              Open a project to start an agent session, run snapshots, and ship changes.
+              افتح مشروعاً لبدء جلسة وكيل، وتشغيل اللقطات، وتسليم التغييرات.
             </div>
           </div>
         </>
       ) : null}
 
       {projectDialog ? (
-        <Modal title="New project" onClose={() => setProjectDialog(false)}>
+        <Modal title="مشروع جديد" onClose={() => setProjectDialog(false)}>
           <form className="grid gap-4" onSubmit={handleCreateProject}>
-            <TextInput label="Project name" name="name" placeholder="frontend" required autoFocus />
-            <label className="grid gap-1.5 text-xs font-medium uppercase tracking-tightish text-muted">
-              <span>Runtime</span>
+            <TextInput label="اسم المشروع" name="name" placeholder="frontend" required autoFocus />
+            <label className="grid gap-1.5 text-xs font-medium tracking-tightish text-muted">
+              <span>بيئة التشغيل</span>
               <select name="runtimeKind" className={selectClass}>
                 {runtimeKinds.map((runtime) => (
                   <option key={runtime} value={runtime}>
@@ -190,10 +190,10 @@ export function WorkspaceDetailPage() {
             </label>
             <div className="mt-2 flex items-center justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setProjectDialog(false)}>
-                Cancel
+                إلغاء
               </Button>
               <Button type="submit" icon={<Plus size={15} />}>
-                Create project
+                إنشاء مشروع
               </Button>
             </div>
           </form>
@@ -201,7 +201,7 @@ export function WorkspaceDetailPage() {
       ) : null}
 
       {serviceDialog && workspace ? (
-        <Modal title="Service catalog" onClose={() => setServiceDialog(false)} size="lg">
+        <Modal title="كتالوج الخدمات" onClose={() => setServiceDialog(false)} size="lg">
           <ServiceWizard
             templates={templates}
             loading={templatesLoading}
@@ -234,7 +234,7 @@ function WorkspaceHeader({ workspace }: { workspace: Workspace }) {
     <div className="mb-7 flex flex-col gap-2">
       <div className="flex items-center gap-2 text-xs text-dim">
         <Boxes size={12} className="text-accent" />
-        <span className="uppercase tracking-tighter2">Workspace</span>
+        <span className="tracking-tighter2">مساحة العمل</span>
         <span>·</span>
         <span className="font-mono">{workspace.slug}</span>
       </div>

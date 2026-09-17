@@ -27,7 +27,7 @@ export function ProjectDetailPage() {
     projectsService
       .get(projectId)
       .then((response) => setProject(response.project))
-      .catch((requestError) => setError(errorMessage(requestError, "Failed to load project.")));
+      .catch((requestError) => setError(errorMessage(requestError, "فشل تحميل المشروع.")));
   }, [projectId]);
 
   const content = useMemo(() => {
@@ -75,14 +75,14 @@ export function ProjectDetailPage() {
 
 function ComingSoon({ tab }: { tab: ProjectTab }) {
   const copy: Record<ProjectTab, { title: string; hint: string }> = {
-    code: { title: "Code", hint: "" },
-    environment: { title: "Environment", hint: "" },
-    preview: { title: "Preview", hint: "" },
-    settings: { title: "Settings", hint: "" },
-    snapshots: { title: "Snapshots", hint: "" },
+    code: { title: "الكود", hint: "" },
+    environment: { title: "البيئة", hint: "" },
+    preview: { title: "المعاينة", hint: "" },
+    settings: { title: "الإعدادات", hint: "" },
+    snapshots: { title: "اللقطات", hint: "" },
     connections: {
-      title: "Connections",
-      hint: "Wire this project to workspace services and other projects via env aliases."
+      title: "الاتصالات",
+      hint: "اربط هذا المشروع بخدمات مساحة العمل والمشاريع الأخرى عبر أسماء مستعارة للبيئة."
     }
   };
   const data = copy[tab];
@@ -93,7 +93,7 @@ function ComingSoon({ tab }: { tab: ProjectTab }) {
       <div className="mt-3 text-base font-semibold tracking-tightish text-ink">{data.title}</div>
       <div className="mt-1 max-w-md text-sm text-muted">{data.hint}</div>
       <div className="mt-4 rounded-full border border-accent/30 bg-accentSoft px-3 py-1 text-[10px] font-semibold uppercase tracking-tighter2 text-accent">
-        Coming soon
+        قريباً
       </div>
     </div>
   );

@@ -67,16 +67,16 @@ export function UserMenu() {
             </div>
           </div>
           <div className="grid gap-0.5 p-1">
-            <MenuItem to="/settings" icon={<User size={15} />} label="Account" onClick={() => setOpen(false)} />
-            <MenuItem to="/provider-keys" icon={<KeyRound size={15} />} label="Provider keys" onClick={() => setOpen(false)} />
-            <MenuItem to="/settings" icon={<SettingsIcon size={15} />} label="Settings" onClick={() => setOpen(false)} />
+            <MenuItem to="/settings" icon={<User size={15} />} label="الحساب" onClick={() => setOpen(false)} />
+            <MenuItem to="/provider-keys" icon={<KeyRound size={15} />} label="مفاتيح المزود" onClick={() => setOpen(false)} />
+            <MenuItem to="/settings" icon={<SettingsIcon size={15} />} label="الإعدادات" onClick={() => setOpen(false)} />
             {user?.role === "instance_admin" ? (
               <>
                 <div className="my-1 h-px bg-hairline" />
                 <MenuItem
                   to="/admin"
                   icon={<ShieldCheck size={15} className="text-accent" />}
-                  label="Admin panel"
+                  label="لوحة الإدارة"
                   accent
                   onClick={() => setOpen(false)}
                 />
@@ -89,7 +89,7 @@ export function UserMenu() {
               className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted transition-colors hover:bg-raised hover:text-ink"
             >
               <LogOut size={15} />
-              <span>Sign out</span>
+              <span>تسجيل الخروج</span>
             </button>
           </div>
         </div>

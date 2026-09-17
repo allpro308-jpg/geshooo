@@ -82,11 +82,11 @@ export function WorkspaceLayout({
             <div className="hidden h-5 w-px shrink-0 bg-hairline sm:block" />
             <Link
               to="/"
-              title="All workspaces"
+              title="كل مساحات العمل"
               className="focus-ring flex shrink-0 items-center gap-2 rounded-md text-muted transition-colors hover:text-ink"
             >
-              <ArrowLeft size={16} />
-              <span className="hidden text-sm xl:inline">All workspaces</span>
+              <ArrowLeft size={16} className="rtl-flip" />
+              <span className="hidden text-sm xl:inline">كل مساحات العمل</span>
             </Link>
             {workspace ? (
               <div className="hidden min-w-0 items-center gap-2 sm:flex">
@@ -141,7 +141,7 @@ export function WorkspaceLayout({
         >
           <div className="flex-1 overflow-y-auto py-3">
             <SidebarGroup
-              label="Projects"
+              label="المشاريع"
               collapsed={collapsed}
               action={
                 onCreateProject ? (
@@ -149,8 +149,8 @@ export function WorkspaceLayout({
                     type="button"
                     onClick={onCreateProject}
                     className="focus-ring grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
-                    aria-label="New project"
-                    title="New project"
+                    aria-label="مشروع جديد"
+                    title="مشروع جديد"
                   >
                     <Plus size={14} />
                   </button>
@@ -158,7 +158,7 @@ export function WorkspaceLayout({
               }
             >
               {workspaceProjects.length === 0 && !collapsed ? (
-                <div className="px-3 py-2 text-xs text-dim">No projects yet.</div>
+                <div className="px-3 py-2 text-xs text-dim">لا توجد مشاريع بعد.</div>
               ) : null}
               {workspaceProjects.map((project) => (
                 <SidebarLink
@@ -175,7 +175,7 @@ export function WorkspaceLayout({
             <div className="mx-3 my-3 h-px bg-hairline" />
 
             <SidebarGroup
-              label="Services"
+              label="الخدمات"
               collapsed={collapsed}
               action={
                 onCreateService ? (
@@ -183,8 +183,8 @@ export function WorkspaceLayout({
                     type="button"
                     onClick={onCreateService}
                     className="focus-ring grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
-                    aria-label="New service"
-                    title="New service"
+                    aria-label="خدمة جديدة"
+                    title="خدمة جديدة"
                   >
                     <Plus size={14} />
                   </button>
@@ -192,7 +192,7 @@ export function WorkspaceLayout({
               }
             >
               {workspaceServices.length === 0 && !collapsed ? (
-                <div className="px-3 py-2 text-xs text-dim">No services yet.</div>
+                <div className="px-3 py-2 text-xs text-dim">لا توجد خدمات بعد.</div>
               ) : null}
               {workspaceServices.map((service) => (
                 <SidebarLink
@@ -211,7 +211,7 @@ export function WorkspaceLayout({
             <button
               type="button"
               onClick={() => toggleChatPanel()}
-              title={chatPanelOpen ? "Hide assistant" : "Show AI assistant"}
+              title={chatPanelOpen ? "إخفاء المساعد" : "إظهار المساعد الذكي"}
               className={`focus-ring flex h-10 items-center justify-center gap-2 border-t border-hairline text-xs font-medium transition-colors outline-none ${
                 chatPanelOpen
                   ? "bg-accent/10 text-accent hover:bg-accent/20"
@@ -339,7 +339,7 @@ function ProjectTabButton({
         type="button"
         onClick={onSelect}
         disabled={tab.comingSoon && !active}
-        title={tab.comingSoon ? `${tab.label} (coming soon)` : tab.label}
+        title={tab.comingSoon ? `${tab.label} (قريباً)` : tab.label}
         className={`focus-ring inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors xl:text-sm ${
           active
             ? "bg-bg text-ink shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset]"

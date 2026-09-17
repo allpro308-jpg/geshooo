@@ -32,7 +32,7 @@ export function SetupPage() {
       });
       navigate("/dashboard", { replace: true });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "Setup failed.");
+      setError(submissionError instanceof Error ? submissionError.message : "فشل الإعداد.");
     } finally {
       setIsSubmitting(false);
     }
@@ -48,24 +48,24 @@ export function SetupPage() {
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark />
-          <div className="mt-3 text-[10px] font-semibold uppercase tracking-tighter2 text-accent">First run</div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tighter2 text-ink">Create the first admin</h1>
+          <div className="mt-3 text-[10px] font-semibold tracking-tighter2 text-accent">التشغيل الأول</div>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tighter2 text-ink">إنشاء أول مسؤول</h1>
           <p className="mt-1.5 max-w-xs text-sm text-muted">
-            This account becomes the instance admin for this self-hosted installation.
+            يصبح هذا الحساب المسؤول الرئيسي لهذا التثبيت المستضاف ذاتياً.
           </p>
         </div>
 
         <div className="rounded-2xl border border-line bg-surface p-6 shadow-2xl shadow-black/30">
           <form className="grid gap-4" onSubmit={handleSubmit}>
-            <TextInput label="Display name" name="displayName" autoComplete="name" />
-            <TextInput label="Username" name="username" autoComplete="username" required />
-            <TextInput label="Email" name="email" type="email" autoComplete="email" required />
-            <TextInput label="Password" name="password" type="password" autoComplete="new-password" minLength={8} required />
+            <TextInput label="الاسم المعروض" name="displayName" autoComplete="name" />
+            <TextInput label="اسم المستخدم" name="username" autoComplete="username" required />
+            <TextInput label="البريد الإلكتروني" name="email" type="email" autoComplete="email" required />
+            <TextInput label="كلمة المرور" name="password" type="password" autoComplete="new-password" minLength={8} required />
             {error ? (
               <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{error}</div>
             ) : null}
             <Button type="submit" disabled={isSubmitting} className="mt-1 w-full">
-              {isSubmitting ? "Creating admin…" : "Create admin"}
+              {isSubmitting ? "جارٍ إنشاء المسؤول…" : "إنشاء مسؤول"}
             </Button>
           </form>
         </div>

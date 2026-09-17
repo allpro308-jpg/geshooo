@@ -104,7 +104,7 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
       setResult(wizardResult);
       setStep("credentials");
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to create service.");
+      setError(requestError instanceof Error ? requestError.message : "فشل إنشاء الخدمة.");
     } finally {
       setSubmitting(false);
     }
@@ -114,8 +114,8 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
     return (
       <div>
         <Header
-          title="Add a service"
-          subtitle="Pick a template. Credentials are generated automatically and stored encrypted."
+          title="إضافة خدمة"
+          subtitle="اختر قالباً. تُنشأ البيانات السرية تلقائياً وتُخزن مشفّرة."
           onCancel={onCancel}
         />
         {loading ? (
@@ -156,7 +156,7 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
     return (
       <div>
         <Header
-          title={`Configure ${selected.name}`}
+          title={`إعداد ${selected.name}`}
           subtitle={selected.description}
           back={() => setStep("pick")}
           onCancel={onCancel}
@@ -164,7 +164,7 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
 
         <div className="grid gap-4">
           <TextInput
-            label="Service name (alias inside workspace)"
+            label="اسم الخدمة (اسم مستعار داخل مساحة العمل)"
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="postgres"
@@ -191,10 +191,10 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
 
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" onClick={() => setStep("pick")}>
-              Back
+              رجوع
             </Button>
             <Button onClick={submit} disabled={submitting} icon={<Sparkles size={14} />}>
-              {submitting ? "Provisioning…" : "Create & start"}
+              {submitting ? "جارٍ التجهيز…" : "إنشاء وتشغيل"}
             </Button>
           </div>
         </div>
@@ -206,13 +206,13 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
     return (
       <div>
         <Header
-          title="Service ready"
-          subtitle="Copy generated credentials now — they will only be visible from the service detail page after this."
+          title="الخدمة جاهزة"
+          subtitle="انسخ البيانات السرية الآن — ستكون مرئية فقط من صفحة تفاصيل الخدمة بعد ذلك."
           onCancel={onCancel}
         />
         <div className="rounded-xl border border-accent/30 bg-accentSoft p-4">
-          <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-tighter2 text-accent">
-            <Check size={14} /> Credentials
+          <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-tighter2 text-accent">
+            <Check size={14} /> البيانات السرية
           </div>
           <div className="grid gap-2">
             {result.credentials.map((credential) => (
@@ -221,7 +221,7 @@ export function ServiceWizard({ templates, loading, onCancel, onSubmit, onComple
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <Button onClick={() => onComplete(result)}>Done</Button>
+          <Button onClick={() => onComplete(result)}>تم</Button>
         </div>
       </div>
     );

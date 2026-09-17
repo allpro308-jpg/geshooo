@@ -157,9 +157,9 @@ export function ChatPanel() {
 
   // Pre-fill quick prompts
   const starterPrompts = [
-    { text: "List the files in this project", icon: <FileCode size={14} className="text-indigo-400" /> },
-    { text: "Help me write a README.md", icon: <FileCode size={14} className="text-pink-400" /> },
-    { text: "Check project dependencies", icon: <Terminal size={14} className="text-emerald-400" /> }
+    { text: "اكتب قائمة بالملفات في هذا المشروع", icon: <FileCode size={14} className="text-indigo-400" /> },
+    { text: "ساعدني في كتابة README.md", icon: <FileCode size={14} className="text-pink-400" /> },
+    { text: "تحقق من تبعيات المشروع", icon: <Terminal size={14} className="text-emerald-400" /> }
   ];
 
   // Active provider's quota warning (if used > 90% of user limit)
@@ -225,7 +225,7 @@ export function ChatPanel() {
           <button
             onClick={handleNewSession}
             disabled={isGenerating}
-            title="New chat"
+            title="محادثة جديدة"
             className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-ink disabled:opacity-50 transition-colors outline-none"
           >
             <Plus size={15} />
@@ -237,7 +237,7 @@ export function ChatPanel() {
                 setEditTitleValue(activeSession?.title || "");
                 setIsEditingTitle(true);
               }}
-              title="Rename chat"
+              title="إعادة تسمية المحادثة"
               className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-amber-500 transition-colors outline-none"
             >
               <Pencil size={15} />
@@ -247,11 +247,11 @@ export function ChatPanel() {
           {activeSessionId && !isEditingTitle && (
             <button
               onClick={() => {
-                if (confirm("Are you sure you want to delete this chat?")) {
+                if (confirm("هل أنت متأكد من حذف هذه المحادثة؟")) {
                   removeSession(activeSessionId);
                 }
               }}
-              title="Delete chat"
+              title="حذف المحادثة"
               className="focus-ring grid h-8 w-8 place-items-center rounded-lg border border-hairline bg-elevated text-muted hover:text-rose-500 transition-colors outline-none"
             >
               <Trash2 size={15} />
@@ -262,8 +262,8 @@ export function ChatPanel() {
             onClick={() => setDebugMode(!debugMode)}
             title={
               debugMode
-                ? "Debug mode ON — click to hide noisy tool calls"
-                : "Debug mode OFF — click to show all tool calls"
+                ? "وضع التصحيح مُفعّل — انقر لإخفاء استدعاءات الأدوات المزعجة"
+                : "وضع التصحيح معطّل — انقر لإظهار جميع استدعاءات الأدوات"
             }
             aria-pressed={debugMode}
             className={`focus-ring grid h-8 w-8 place-items-center rounded-lg border transition-colors outline-none ${
@@ -284,7 +284,7 @@ export function ChatPanel() {
         {isLoadingMessages ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-dim">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-            <span>Loading message history...</span>
+            <span>جارٍ تحميل سجل الرسائل...</span>
           </div>
         ) : messages.length === 0 ? (
           // Welcome / Starter Prompts screen
@@ -292,9 +292,9 @@ export function ChatPanel() {
             <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-hairline bg-elevated text-accent">
               <Sparkles size={22} className="animate-pulse" />
             </div>
-            <h3 className="text-sm font-bold tracking-tight text-ink">Welcome to Singulary</h3>
+            <h3 className="text-sm font-bold tracking-tight text-ink">مرحباً بك في سنغولاري</h3>
             <p className="mt-1 text-xs text-muted max-w-[240px] mx-auto leading-relaxed">
-              Ask questions, examine files, or run terminal tasks inside your sandbox container.
+              اطرح أسئلة، افحص الملفات، أو نفّذ مهام الطرفية داخل حاوية العزل الخاصة بك.
             </p>
 
             <div className="mt-6 flex flex-col gap-2">
@@ -381,7 +381,7 @@ export function ChatPanel() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="What are we building today?"
+            placeholder="ماذا نبني اليوم؟"
             className="w-full max-h-32 min-h-[24px] resize-none bg-transparent p-0 text-xs text-ink outline-none border-0 placeholder-dim leading-relaxed focus:ring-0"
             disabled={isLoadingMessages || !activeSessionId}
           />
@@ -394,7 +394,7 @@ export function ChatPanel() {
                 className="flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-2 py-1 text-[10px] font-medium text-muted hover:border-muted/30 hover:text-ink transition-colors outline-none"
               >
                 <Cpu size={11} className="text-accent shrink-0" />
-                <span className="font-mono max-w-[110px] truncate">{selectedModel || "Select LLM"}</span>
+                <span className="font-mono max-w-[110px] truncate">{selectedModel || "اختر نموذجاً"}</span>
               </button>
               <ApprovalModeSelect
                 value={approvalMode}
@@ -403,7 +403,7 @@ export function ChatPanel() {
               {quotaWarning && (
                 <div className="flex items-center gap-1 text-[9px] font-semibold text-rose-500 animate-pulse">
                   <AlertTriangle size={10} />
-                  <span>Quota low</span>
+                  <span>الحصة منخفضة</span>
                 </div>
               )}
             </div>
@@ -411,7 +411,7 @@ export function ChatPanel() {
             {isGenerating ? (
               <button
                 onClick={cancelGeneration}
-                title="Stop generation"
+                title="إيقاف التوليد"
                 className="focus-ring flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500 hover:bg-rose-600 text-white transition-colors outline-none"
               >
                 <Square size={12} fill="white" />
@@ -420,7 +420,7 @@ export function ChatPanel() {
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() || !activeSessionId || !selectedModel}
-                title={!selectedModel ? "Select an AI model first" : "Send message"}
+                title={!selectedModel ? "اختر نموذج ذكاء اصطناعي أولاً" : "إرسال رسالة"}
                 className="focus-ring flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-40 disabled:hover:bg-accent transition-colors outline-none"
               >
                 <Send size={12} />
@@ -496,15 +496,15 @@ function ApprovalModeSelect({
     <label
       title={
         isAuto
-          ? "Auto-approve risky tool calls (file deletes, shell, restarts, snapshot restore, service create). Sent at session start and on every message."
-          : "Pause and ask before running risky tool calls."
+          ? "الموافقة التلقائية على استدعاءات الأدوات الخطرة (حذف الملفات، الأوامر، إعادة التشغيل، استعادة اللقطات، إنشاء الخدمات). تُرسل عند بدء الجلسة وفي كل رسالة."
+          : "إيقاف والسؤال قبل تشغيل استدعاءات الأدوات الخطرة."
       }
       className={`relative flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium transition-colors cursor-pointer ${ringClass} ${labelClass}`}
     >
       <Icon size={11} className="shrink-0" />
-      <span>Approval:</span>
+      <span>الموافقة:</span>
       <span className={`font-semibold ${isAuto ? "text-amber-300" : "text-ink"}`}>
-        {isAuto ? "Auto" : "Manual"}
+        {isAuto ? "تلقائي" : "يدوي"}
       </span>
       <ChevronDown size={10} className="opacity-60" />
       <select
@@ -513,8 +513,8 @@ function ApprovalModeSelect({
         onChange={(event) => onChange(event.target.value as AgentApprovalMode)}
         className="absolute inset-0 cursor-pointer opacity-0"
       >
-        <option value="manual">Manual — ask before risky tools</option>
-        <option value="auto">Auto — auto-approve everything</option>
+        <option value="manual">يدوي — اسأل قبل الأدوات الخطرة</option>
+        <option value="auto">تلقائي — وافق تلقائياً على كل شيء</option>
       </select>
     </label>
   );
@@ -554,14 +554,14 @@ function ApprovalModal({
             onClick={onReject}
             className="focus-ring h-8 rounded-lg border border-line px-3 text-xs font-medium text-muted transition-colors hover:border-rose-500/40 hover:text-rose-500"
           >
-            Reject
+            رفض
           </button>
           <button
             type="button"
             onClick={onApprove}
             className="focus-ring h-8 rounded-lg bg-amber-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-amber-400"
           >
-            Approve
+            موافقة
           </button>
         </div>
       </div>

@@ -115,7 +115,7 @@ export function PreviewTab({ project }: PreviewTabProps) {
             disabled={!ready}
             className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-muted transition-colors hover:bg-elevated hover:text-ink disabled:opacity-40"
           >
-            <RefreshCw size={11} /> Reload
+            <RefreshCw size={11} /> إعادة تحميل
           </button>
           {previewUrl ? (
             <a
@@ -124,7 +124,7 @@ export function PreviewTab({ project }: PreviewTabProps) {
               rel="noreferrer"
               className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-muted transition-colors hover:bg-elevated hover:text-ink"
             >
-              <ExternalLink size={11} /> Open
+              <ExternalLink size={11} /> فتح
             </a>
           ) : null}
         </div>
@@ -136,7 +136,7 @@ export function PreviewTab({ project }: PreviewTabProps) {
             key={iframeKey}
             ref={iframeRef}
             src={previewUrl!}
-            title="Project preview"
+            title="معاينة المشروع"
             className="h-full w-full border-0 bg-white"
           />
         ) : (
@@ -170,9 +170,9 @@ function PortPicker({
       <span className="font-mono text-[11px] text-dim">
         {status === "running"
           ? exposedHints.length > 0
-            ? `Waiting for a listener on ${exposedHints.join(", ")}…`
-            : "Scanning for ports…"
-          : `No active port — status: ${status}`}
+            ? `في انتظار مستمع على ${exposedHints.join(", ")}…`
+            : "جارٍ البحث عن المنافذ…"
+          : `لا يوجد منفذ نشط — الحالة: ${status}`}
       </span>
     );
   }
@@ -215,12 +215,12 @@ function PreviewEmpty({
           {running ? <Loader2 size={20} className="animate-spin" /> : <Globe size={20} />}
         </div>
         <div className="mt-4 text-base font-semibold tracking-tightish text-ink">
-          {running ? "Waiting for an open port…" : "Preview unavailable"}
+          {running ? "في انتظار منفذ مفتوح…" : "المعاينة غير متاحة"}
         </div>
         <p className="mt-1 text-sm text-muted">
           {running
-            ? "Singulary is scanning the container for a listening port. Make sure your dev server binds to 0.0.0.0."
-            : "Start the project container to inspect open ports and load the preview."}
+            ? "سنغولاري يبحث في الحاوية عن منفذ استماع. تأكد من أن خادم التطوير لديك مرتبط بـ 0.0.0.0."
+            : "شغّل حاوية المشروع لفحص المنافذ المفتوحة وتحميل المعاينة."}
         </p>
         {!running ? (
           <button
@@ -230,7 +230,7 @@ function PreviewEmpty({
             className="focus-ring mt-5 inline-flex h-9 items-center gap-2 rounded-lg border border-accent bg-accent px-3 text-sm font-medium text-white transition-colors hover:bg-pink-400 disabled:opacity-60"
           >
             <Play size={13} />
-            {busy ? "Starting…" : status === "starting" ? "Starting…" : "Start project"}
+            {busy ? "جارٍ التشغيل…" : status === "starting" ? "جارٍ التشغيل…" : "تشغيل المشروع"}
           </button>
         ) : null}
         {ports.length === 0 && running ? (

@@ -23,7 +23,7 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
       const response = await projectsService.listEnv(projectId);
       setVars(response.vars);
     } catch (requestError) {
-      setError(errorMessage(requestError, "Failed to load environment."));
+      setError(errorMessage(requestError, "فشل تحميل البيئة."));
     }
   }
 
@@ -45,20 +45,20 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
       setCreating(false);
       await load();
     } catch (requestError) {
-      setError(errorMessage(requestError, "Failed to create env var."));
+      setError(errorMessage(requestError, "فشل إنشاء المتغير."));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function remove(envId: string) {
-    if (!window.confirm("Delete this env var?")) return;
+    if (!window.confirm("هل تريد حذف هذا المتغير؟")) return;
     setError(null);
     try {
       await projectsService.deleteEnv(projectId, envId);
       await load();
     } catch (requestError) {
-      setError(errorMessage(requestError, "Failed to delete env var."));
+      setError(errorMessage(requestError, "فشل حذف المتغير."));
     }
   }
 
@@ -66,14 +66,14 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
     <div>
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold tracking-tightish text-ink">Environment variables</h2>
+          <h2 className="text-base font-semibold tracking-tightish text-ink">متغيرات البيئة</h2>
           <p className="mt-1 text-sm text-muted">
-            Project-scoped variables injected when the runtime starts. Secret values are write-only after creation.
+            متغيرات خاصة بالمشروع تُحقن عند بدء بيئة التشغيل. القيم السرية للكتابة فقط بعد الإنشاء.
           </p>
         </div>
         {!creating ? (
           <Button icon={<Plus size={14} />} onClick={() => setCreating(true)}>
-            Add variable
+            إضافة متغير
           </Button>
         ) : null}
       </div>
@@ -86,13 +86,13 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
         <div className="mb-4 rounded-xl border border-line bg-surface p-4">
           <div className="grid gap-3 sm:grid-cols-[200px_1fr_auto]">
             <TextInput
-              label="Key"
+              label="المفتاح"
               value={draft.key}
               onChange={(event) => setDraft({ ...draft, key: event.target.value.toUpperCase() })}
               placeholder="DATABASE_URL"
             />
             <TextInput
-              label="Value"
+              label="القيمة"
               value={draft.value}
               type={draft.isSecret ? "password" : "text"}
               onChange={(event) => setDraft({ ...draft, value: event.target.value })}
@@ -104,10 +104,10 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
                   checked={draft.isSecret}
                   onChange={(event) => setDraft({ ...draft, isSecret: event.target.checked })}
                 />
-                Secret
+                سرّي
               </label>
               <Button onClick={submit} disabled={submitting}>
-                {submitting ? "Saving…" : "Save"}
+                {submitting ? "جارٍ الحفظ…" : "حفظ"}
               </Button>
               <Button
                 variant="ghost"
@@ -116,7 +116,7 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
                   setDraft({ key: "", value: "", isSecret: true });
                 }}
               >
-                Cancel
+                إلغاء
               </Button>
             </div>
           </div>
@@ -130,10 +130,10 @@ export function EnvironmentTab({ projectId }: { projectId: string }) {
       ) : vars.length === 0 ? (
         <div className="grid place-items-center rounded-xl border border-dashed border-line bg-surface p-10 text-center">
           <Lock size={18} className="text-dim" />
-          <div className="mt-3 text-sm text-ink">No environment variables yet</div>
+          <div className="mt-3 text-sm text-ink">لا توجد متغيرات بيئة بعد</div>
           <div className="mt-1 max-w-sm text-xs text-muted">
-            Set keys like <code className="font-mono text-accent">DATABASE_URL</code> here. They are encrypted at rest
-            and only injected at runtime.
+            اضبط مفاتيح مثل <code className="font-mono text-accent">DATABASE_URL</code> هنا. تُشفّر عند التخزين
+            وتُحقن فقط عند التشغيل.
           </div>
         </div>
       ) : (
@@ -170,14 +170,14 @@ function EnvRow({ entry, onDelete }: { entry: ProjectEnvVar; onDelete: () => voi
         <div className="flex items-center gap-2">
           <code className="font-mono text-sm text-ink">{entry.key}</code>
           {entry.isSecret ? (
-            <span className="rounded-full border border-accent/30 bg-accentSoft px-1.5 py-0.5 text-[9px] uppercase tracking-tighter2 text-accent">
-              secret
+            <span className="rounded-full border border-accent/30 bg-accentSoft px-1.5 py-0.5 text-[9px] tracking-tighter2 text-accent">
+              سرّي
             </span>
           ) : null}
         </div>
         <div className="mt-1 font-mono text-xs text-muted">
           {entry.isSecret && entry.value === null
-            ? "Value hidden after creation"
+            ? "القيمة مخفية بعد الإنشاء"
             : reveal
               ? entry.value
               : "•".repeat(12)}

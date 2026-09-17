@@ -56,21 +56,21 @@ export function ProjectStatusBar({ project }: ProjectStatusBarProps) {
         <StatusPill status={status} />
         <div className="ml-1 flex items-center gap-0.5">
           <IconButton
-            label="Start"
+            label="تشغيل"
             disabled={running || busy !== null}
             onClick={() => void action("start")}
             busy={busy === "start"}
             icon={<Play size={12} />}
           />
           <IconButton
-            label="Stop"
+            label="إيقاف"
             disabled={!running || busy !== null}
             onClick={() => void action("stop")}
             busy={busy === "stop"}
             icon={<Pause size={12} />}
           />
           <IconButton
-            label="Restart"
+            label="إعادة التشغيل"
             disabled={!runtime?.containerId || busy !== null}
             onClick={() => void action("restart")}
             busy={busy === "restart"}
@@ -106,25 +106,25 @@ export function ProjectStatusBar({ project }: ProjectStatusBarProps) {
             icon={<AlertCircle size={11} />}
             value={stats?.error ?? 0}
             tone="text-rose-300"
-            label="errors"
+            label="أخطاء"
           />
           <Counter
             icon={<AlertTriangle size={11} />}
             value={stats?.warn ?? 0}
             tone="text-yellow-300"
-            label="warnings"
+            label="تحذيرات"
           />
           <Counter
             icon={<Info size={11} />}
             value={stats?.info ?? 0}
             tone="text-muted"
-            label="info"
+            label="معلومات"
           />
         </span>
         <span className="h-3 w-px bg-line" />
         <span className="flex items-center gap-1.5">
           {terminalOpen ? <X size={12} /> : <TerminalSquare size={12} />}
-          <span className="hidden sm:inline">{terminalOpen ? "Close" : "Terminal"}</span>
+          <span className="hidden sm:inline">{terminalOpen ? "إغلاق" : "الطرفية"}</span>
         </span>
       </button>
     </div>

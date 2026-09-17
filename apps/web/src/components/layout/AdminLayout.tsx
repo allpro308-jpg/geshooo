@@ -26,29 +26,29 @@ const sections: Array<{
   items: Array<{ to: string; label: string; icon: ReactNode; end?: boolean }>;
 }> = [
   {
-    title: "Platform",
+    title: "المنصة",
     items: [
-      { to: "/admin", label: "Overview", icon: <Gauge size={15} />, end: true },
-      { to: "/admin/settings", label: "Settings", icon: <Settings size={15} /> },
-      { to: "/admin/docker", label: "Docker", icon: <Server size={15} /> }
+      { to: "/admin", label: "نظرة عامة", icon: <Gauge size={15} />, end: true },
+      { to: "/admin/settings", label: "الإعدادات", icon: <Settings size={15} /> },
+      { to: "/admin/docker", label: "دوكر", icon: <Server size={15} /> }
     ]
   },
   {
-    title: "Access",
+    title: "الوصول",
     items: [
-      { to: "/admin/users", label: "Users", icon: <Users size={15} /> },
-      { to: "/admin/groups", label: "Groups", icon: <SquareStack size={15} /> },
-      { to: "/admin/workspaces", label: "Workspaces", icon: <Boxes size={15} /> },
-      { to: "/admin/permissions", label: "Permissions", icon: <Lock size={15} /> },
-      { to: "/admin/rules", label: "Group rules", icon: <ShieldCheck size={15} /> }
+      { to: "/admin/users", label: "المستخدمون", icon: <Users size={15} /> },
+      { to: "/admin/groups", label: "المجموعات", icon: <SquareStack size={15} /> },
+      { to: "/admin/workspaces", label: "مساحات العمل", icon: <Boxes size={15} /> },
+      { to: "/admin/permissions", label: "الصلاحيات", icon: <Lock size={15} /> },
+      { to: "/admin/rules", label: "قواعد المجموعة", icon: <ShieldCheck size={15} /> }
     ]
   },
   {
-    title: "AI",
+    title: "الذكاء الاصطناعي",
     items: [
-      { to: "/admin/provider-keys", label: "Providers", icon: <KeyRound size={15} /> },
-      { to: "/admin/model-access", label: "Model access", icon: <Brain size={15} /> },
-      { to: "/admin/quotas", label: "Token quotas", icon: <Wallet size={15} /> }
+      { to: "/admin/provider-keys", label: "المزودون", icon: <KeyRound size={15} /> },
+      { to: "/admin/model-access", label: "وصول النماذج", icon: <Brain size={15} /> },
+      { to: "/admin/quotas", label: "حصص الرموز", icon: <Wallet size={15} /> }
     ]
   }
 ];
@@ -71,8 +71,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <ShieldCheck size={14} />
             </div>
             <div className="leading-tight">
-              <div className="text-[13px] font-semibold tracking-tightish text-ink">Admin</div>
-              <div className="text-[10px] uppercase tracking-tighter2 text-dim">Singulary</div>
+              <div className="text-[13px] font-semibold tracking-tightish text-ink">الإدارة</div>
+              <div className="text-[10px] tracking-tighter2 text-dim">سنغولاري</div>
             </div>
           </div>
 
@@ -142,7 +142,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 className="focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-elevated px-3 text-sm text-muted transition-colors hover:bg-raised hover:text-ink"
               >
                 <LogOut size={14} />
-                Sign out
+                تسجيل الخروج
               </button>
             </div>
           </header>
